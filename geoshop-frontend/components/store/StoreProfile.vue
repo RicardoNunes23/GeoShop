@@ -1,10 +1,10 @@
-<!-- pages/StoreProfile.vue -->
 <template>
   <div>
     <h2 class="text-h4 font-weight-bold text-primary mb-6">
       Perfil da Loja
     </h2>
     
+    <!-- Tabela sem bordas -->
     <div class="pa-4 mb-6">
       <v-data-table
         :items="[profile]"
@@ -31,14 +31,6 @@
               Editar
             </v-btn>
             <v-btn 
-              color="primary" 
-              class="mr-2"
-              @click="openPlanSelectionModal"
-            >
-              <v-icon left>mdi-card-bulleted</v-icon>
-              Gerenciar Planos
-            </v-btn>
-            <v-btn 
               color="error" 
               @click="confirmDeleteProfile(item)"
             >
@@ -60,6 +52,7 @@
       {{ error }}
     </v-alert>
 
+    <!-- Modal de detalhes da loja -->
     <v-dialog v-model="detailsModal" max-width="600" persistent>
       <div class="modal-content">
         <h2 class="text-h5 font-weight-bold text-primary mb-4">
@@ -72,14 +65,12 @@
                 <p><strong>Nome:</strong> {{ profile.username }}</p>
                 <p><strong>Responsável:</strong> {{ profile.responsible }}</p>
                 <p><strong>E-mail:</strong> {{ profile.email }}</p>
-                <p><strong>Telefone:</strong> {{ profile.phone }}</p>
                 <p><strong>CNPJ:</strong> {{ profile.cnpj }}</p>
                 <p><strong>Endereço:</strong> {{ profile.address }}</p>
                 <p><strong>Latitude:</strong> {{ profile.latitude }}</p>
                 <p><strong>Longitude:</strong> {{ profile.longitude }}</p>
                 <p><strong>Trabalha com Qtd. Mínima:</strong> {{ profile.use_bulk_pricing ? 'Sim' : 'Não' }}</p>
                 <p><strong>Tem Cartão Fidelidade:</strong> {{ profile.has_loyalty_card ? 'Sim' : 'Não' }}</p>
-                <p><strong>Plano Ativo:</strong> {{ authStore.activePlan ? authStore.activePlan.description : 'Nenhum plano ativo' }}</p>
               </v-col>
             </v-row>
           </v-card-text>
@@ -92,6 +83,7 @@
       </div>
     </v-dialog>
 
+    <!-- Modal de edição -->
     <v-dialog v-model="editModal" max-width="800" persistent>
       <div class="modal-content">
         <h2 class="text-h4 font-weight-bold text-primary">
@@ -138,14 +130,6 @@
                 prepend-inner-icon="mdi-account" 
                 outlined
                 :rules="[v => !!v || 'Responsável é obrigatório']" 
-              />
-              <v-text-field 
-                v-model="editForm.phone" 
-                label="Telefone"
-                prepend-inner-icon="mdi-phone" 
-                v-mask="'+55 (##) #####-####'" 
-                outlined
-                :rules="[v => !!v || 'Telefone é obrigatório', v => /^\+55 \(\d{2}\) \d{5}-\d{4}$/.test(v) || 'Telefone inválido']" 
               />
               <v-row>
                 <v-col cols="6">
@@ -205,10 +189,7 @@
       </div>
     </v-dialog>
 
-    <v-dialog v-model="planSelectionModal" max-width="800" persistent>
-      <PlanSelection />
-    </v-dialog>
-
+    <!-- Modal de confirmação de exclusão -->
     <v-dialog v-model="confirmDelete" max-width="500" persistent>
       <div class="modal-content">
         <h2 class="text-h5 font-weight-bold text-primary">
@@ -233,7 +214,6 @@ import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 import { useRouter } from 'vue-router';
 import { mask } from 'vue-the-mask';
-import PlanSelection from '~/components/PlanSelection.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -244,7 +224,6 @@ const profile = ref({
   cnpj: '',
   address: '',
   responsible: '',
-  phone: '',
   latitude: 0,
   longitude: 0,
   use_bulk_pricing: false,
@@ -255,16 +234,13 @@ const headers = ref([
   { title: 'Nome', key: 'username' },
   { title: 'Responsável', key: 'responsible' },
   { title: 'E-mail', key: 'email' },
-  { title: 'Telefone', key: 'phone' },
   { title: 'Trabalha com Qtd. Mínima', key: 'use_bulk_pricing', value: item => item.use_bulk_pricing ? 'Sim' : 'Não' },
   { title: 'Tem Cartão Fidelidade', key: 'has_loyalty_card', value: item => item.has_loyalty_card ? 'Sim' : 'Não' },
-  { title: 'Plano Ativo', key: 'active_plan', value: () => authStore.activePlan ? authStore.activePlan.description : 'Nenhum plano ativo' },
   { title: 'Ações', key: 'actions', sortable: false },
 ]);
 
 const detailsModal = ref(false);
 const editModal = ref(false);
-const planSelectionModal = ref(false);
 const confirmDelete = ref(false);
 const loading = ref(false);
 const deleting = ref(false);
@@ -278,7 +254,6 @@ const editForm = ref({
   cnpj: '',
   address: '',
   responsible: '',
-  phone: '',
   latitude: 0,
   longitude: 0,
   use_bulk_pricing: false,
@@ -294,8 +269,6 @@ const editFormValid = computed(() => {
     /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/.test(editForm.value.cnpj) &&
     !!editForm.value.address &&
     !!editForm.value.responsible &&
-    !!editForm.value.phone &&
-    /^\+55 \(\d{2}\) \d{5}-\d{4}$/.test(editForm.value.phone) &&
     editForm.value.latitude >= -90 && editForm.value.latitude <= 90 &&
     editForm.value.longitude >= -180 && editForm.value.longitude <= 180
   );
@@ -320,7 +293,6 @@ onMounted(async () => {
         cnpj: authStore.user.cnpj || '',
         address: authStore.user.address || '',
         responsible: authStore.user.responsible || '',
-        phone: authStore.user.phone || '',
         latitude: Number(authStore.user.latitude) || 0,
         longitude: Number(authStore.user.longitude) || 0,
         use_bulk_pricing: authStore.user.use_bulk_pricing || false,
@@ -350,11 +322,6 @@ function openEditModal(item) {
   console.log('openEditModal: Abrindo modal de edição com item:', item);
   editForm.value = { ...item };
   editModal.value = true;
-}
-
-function openPlanSelectionModal() {
-  console.log('openPlanSelectionModal: Abrindo modal de seleção de planos');
-  planSelectionModal.value = true;
 }
 
 function confirmDeleteProfile(item) {

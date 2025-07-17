@@ -20,7 +20,10 @@
     <!-- Botão de criação visível apenas para admin -->
     <v-row v-if="authStore.isAdmin" class="mb-4">
       <v-col>
-        <v-btn color="primary" @click="startCreating">Criar Novo Plano</v-btn>
+        <v-btn color="primary" @click="startCreating">
+          <v-icon left>mdi-plus</v-icon>
+          Criar Novo Plano
+        </v-btn>
       </v-col>
     </v-row>
 
@@ -37,14 +40,44 @@
             R$ {{ item.price.toFixed(2) }}
           </template>
           
+          <template v-slot:item.ativo="{ item }">
+            <v-chip :color="item.ativo ? 'success' : 'error'" small>
+              {{ item.ativo ? 'Ativo' : 'Inativo' }}
+            </v-chip>
+          </template>
+          
           <!-- Ações visíveis apenas para admin -->
           <template v-if="authStore.isAdmin" v-slot:item.actions="{ item }">
-            <v-btn color="primary" small class="mr-2" @click="startEditing(item)">
-              Editar
-            </v-btn>
-            <v-btn color="error" small @click="confirmDelete(item)">
-              Excluir
-            </v-btn>
+            <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn 
+                  color="primary" 
+                  small 
+                  class="mr-2" 
+                  @click="startEditing(item)"
+                  v-bind="attrs"
+                  v-on="on"
+                >
+                  <v-icon small>mdi-pencil</v-icon>
+                </v-btn>
+              </template>
+              <span>Editar</span>
+            </v-tooltip>
+            
+            <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn 
+                  color="error" 
+                  small 
+                  @click="confirmDelete(item)"
+                  v-bind="attrs"
+                  v-on="on"
+                >
+                  <v-icon small>mdi-delete</v-icon>
+                </v-btn>
+              </template>
+              <span>Excluir</span>
+            </v-tooltip>
           </template>
         </v-data-table>
       </v-col>
@@ -53,45 +86,78 @@
     <!-- Diálogo de criação/edição -->
     <v-dialog v-model="dialog" max-width="600px" persistent>
       <v-card>
-        <v-card-title>{{ editingPlan ? 'Editar Plano' : 'Criar Plano' }}</v-card-title>
+        <v-card-title class="d-flex justify-space-between align-center">
+          <span>{{ editingPlan ? 'Editar Plano' : 'Criar Plano' }}</span>
+          <v-switch
+            v-model="formData.ativo"
+            label="Plano Ativo"
+            color="success"
+            hide-details
+            class="mt-0"
+          />
+        </v-card-title>
         <v-card-text>
           <v-form ref="form" v-model="valid">
-            <v-select
-              v-model="formData.name"
-              :items="planOptions"
-              label="Tipo de Plano"
-              :rules="[v => !!v || 'Tipo é obrigatório']"
-              required
-            />
             <v-text-field
-              v-model.number="formData.price"
-              label="Preço (R$)"
-              type="number"
-              step="0.01"
-              min="0"
-              :rules="[v => !!v || 'Preço é obrigatório', v => v >= 0 || 'Preço inválido']"
+              v-model="formData.name"
+              label="Nome do Plano"
+              :rules="[v => !!v || 'Nome é obrigatório']"
               required
+              outlined
+              class="mb-4"
             />
+            
+            <v-text-field
+                v-model.number="formData.price"
+                label="Preço (R$)"
+                type="number"
+                step="0.01"
+                min="0"
+                :rules="[
+                    v => (v || v === 0) || 'Preço é obrigatório',
+                    v => Number(v) >= 0 || 'Preço não pode ser negativo',
+                    v => !isNaN(v) || 'Valor inválido'
+                ]"
+                required
+                outlined
+                class="mb-4"
+                @blur="formatPrice"
+                />
+            
             <v-text-field
               v-model.number="formData.product_limit"
               label="Limite de Produtos"
               type="number"
               min="0"
-              :rules="[v => !!v || 'Limite é obrigatório', v => v >= 0 || 'Limite inválido']"
+              :rules="[
+                v => !!v || 'Limite é obrigatório',
+                v => v >= 0 || 'Limite deve ser positivo'
+              ]"
               required
+              outlined
+              class="mb-4"
             />
+            
             <v-textarea
               v-model="formData.description"
               label="Descrição"
               rows="3"
+              outlined
+              counter="500"
+              :rules="[v => !v || v.length <= 500 || 'Máximo 500 caracteres']"
             />
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn color="grey" text @click="cancel">Cancelar</v-btn>
-          <v-btn color="primary" :loading="planStore.loading" @click="savePlan">
-            {{ editingPlan ? 'Salvar' : 'Criar' }}
+          <v-btn 
+            color="primary" 
+            :loading="planStore.loading" 
+            @click="savePlan"
+            :disabled="!valid"
+          >
+            {{ editingPlan ? 'Salvar Alterações' : 'Criar Plano' }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -100,14 +166,27 @@
     <!-- Confirmação de exclusão -->
     <v-dialog v-model="deleteDialog" max-width="400px">
       <v-card>
-        <v-card-title>Confirmar Exclusão</v-card-title>
+        <v-card-title class="headline">Confirmar Exclusão</v-card-title>
         <v-card-text>
-          Tem certeza que deseja excluir o plano "{{ deletePlan?.get_name_display }}"?
+          Tem certeza que deseja excluir o plano <strong>"{{ deletePlan?.name }}"</strong>?
+          <v-alert
+            v-if="deletePlan?.users_count > 0"
+            type="warning"
+            class="mt-3"
+          >
+            Este plano está associado a {{ deletePlan?.users_count }} usuário(s). A exclusão afetará esses usuários.
+          </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn color="grey" text @click="deleteDialog = false">Cancelar</v-btn>
-          <v-btn color="error" :loading="planStore.loading" @click="deleteSelectedPlan">Excluir</v-btn>
+          <v-btn 
+            color="error" 
+            :loading="planStore.loading" 
+            @click="deleteSelectedPlan"
+          >
+            Confirmar Exclusão
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -132,24 +211,17 @@ const formData = ref({
   name: '',
   price: 0,
   product_limit: 0,
-  description: ''
+  description: '',
+  ativo: true
 })
 
-const planOptions = [
-  { value: 'A', text: 'Plano A - Grátis' },
-  { value: 'B', text: 'Plano B' },
-  { value: 'C', text: 'Plano C' },
-  { value: 'D', text: 'Plano D' },
-  { value: 'E', text: 'Plano E' }
-]
-
 const headers = [
-  { title: 'ID', key: 'id' },
-  { title: 'Nome', key: 'get_name_display' },
-  { title: 'Preço', key: 'price' },
-  { title: 'Limite de Produtos', key: 'product_limit' },
-  { title: 'Descrição', key: 'description' },
-  { title: 'Ações', key: 'actions', sortable: false }
+  { title: 'ID', key: 'id', width: '80px' },
+  { title: 'Nome', key: 'name' },
+  { title: 'Preço', key: 'price', align: 'end' },
+  { title: 'Limite', key: 'product_limit', align: 'end' },
+  { title: 'Status', key: 'ativo', align: 'center' },
+  { title: 'Ações', key: 'actions', sortable: false, align: 'center', width: '120px' }
 ]
 
 // Filtra cabeçalhos para não mostrar ações se não for admin
@@ -161,15 +233,35 @@ onMounted(() => {
   planStore.fetchPlans()
 })
 
+function formatPrice() {
+  if (formData.value.price === '') {
+    formData.value.price = 0
+  } else {
+    formData.value.price = Number(formData.value.price).toFixed(2)
+  }
+}
+
 function startCreating() {
   editingPlan.value = null
-  formData.value = { name: '', price: 0, product_limit: 0, description: '' }
+  formData.value = { 
+    name: '', 
+    price: 0, 
+    product_limit: 0, 
+    description: '', 
+    ativo: true 
+  }
   dialog.value = true
 }
 
 function startEditing(plan) {
   editingPlan.value = plan
-  formData.value = { ...plan }
+  formData.value = { 
+    name: plan.name,
+    price: plan.price,
+    product_limit: plan.product_limit,
+    description: plan.description,
+    ativo: plan.ativo
+  }
   dialog.value = true
 }
 
@@ -190,7 +282,10 @@ async function savePlan() {
 }
 
 function confirmDelete(plan) {
-  deletePlan.value = plan
+  deletePlan.value = {
+    ...plan,
+    users_count: plan.users?.length || 0
+  }
   deleteDialog.value = true
 }
 
@@ -209,3 +304,10 @@ function cancel() {
   form.value?.reset()
 }
 </script>
+
+<style scoped>
+.v-data-table >>> .v-data-table-header th {
+  font-weight: bold;
+  background-color: #f5f5f5;
+}
+</style>
