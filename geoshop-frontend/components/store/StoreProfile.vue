@@ -4,7 +4,6 @@
       Perfil da Loja
     </h2>
     
-    <!-- Tabela sem bordas -->
     <div class="pa-4 mb-6">
       <v-data-table
         :items="[profile]"
@@ -52,7 +51,6 @@
       {{ error }}
     </v-alert>
 
-    <!-- Modal de detalhes da loja -->
     <v-dialog v-model="detailsModal" max-width="600" persistent>
       <div class="modal-content">
         <h2 class="text-h5 font-weight-bold text-primary mb-4">
@@ -65,6 +63,7 @@
                 <p><strong>Nome:</strong> {{ profile.username }}</p>
                 <p><strong>Responsável:</strong> {{ profile.responsible }}</p>
                 <p><strong>E-mail:</strong> {{ profile.email }}</p>
+                <p><strong>Telefone:</strong> {{ profile.phone }}</p>
                 <p><strong>CNPJ:</strong> {{ profile.cnpj }}</p>
                 <p><strong>Endereço:</strong> {{ profile.address }}</p>
                 <p><strong>Latitude:</strong> {{ profile.latitude }}</p>
@@ -83,7 +82,6 @@
       </div>
     </v-dialog>
 
-    <!-- Modal de edição -->
     <v-dialog v-model="editModal" max-width="800" persistent>
       <div class="modal-content">
         <h2 class="text-h4 font-weight-bold text-primary">
@@ -130,6 +128,14 @@
                 prepend-inner-icon="mdi-account" 
                 outlined
                 :rules="[v => !!v || 'Responsável é obrigatório']" 
+              />
+              <v-text-field 
+                v-model="editForm.phone" 
+                label="Telefone"
+                prepend-inner-icon="mdi-phone" 
+                v-mask="'+55 (##) #####-####'" 
+                outlined
+                :rules="[v => !!v || 'Telefone é obrigatório', v => /^\+55 \(\d{2}\) \d{5}-\d{4}$/.test(v) || 'Telefone inválido']" 
               />
               <v-row>
                 <v-col cols="6">
@@ -189,7 +195,6 @@
       </div>
     </v-dialog>
 
-    <!-- Modal de confirmação de exclusão -->
     <v-dialog v-model="confirmDelete" max-width="500" persistent>
       <div class="modal-content">
         <h2 class="text-h5 font-weight-bold text-primary">
@@ -224,6 +229,7 @@ const profile = ref({
   cnpj: '',
   address: '',
   responsible: '',
+  phone: '',
   latitude: 0,
   longitude: 0,
   use_bulk_pricing: false,
@@ -234,6 +240,7 @@ const headers = ref([
   { title: 'Nome', key: 'username' },
   { title: 'Responsável', key: 'responsible' },
   { title: 'E-mail', key: 'email' },
+  { title: 'Telefone', key: 'phone' },
   { title: 'Trabalha com Qtd. Mínima', key: 'use_bulk_pricing', value: item => item.use_bulk_pricing ? 'Sim' : 'Não' },
   { title: 'Tem Cartão Fidelidade', key: 'has_loyalty_card', value: item => item.has_loyalty_card ? 'Sim' : 'Não' },
   { title: 'Ações', key: 'actions', sortable: false },
@@ -254,6 +261,7 @@ const editForm = ref({
   cnpj: '',
   address: '',
   responsible: '',
+  phone: '',
   latitude: 0,
   longitude: 0,
   use_bulk_pricing: false,
@@ -269,6 +277,8 @@ const editFormValid = computed(() => {
     /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/.test(editForm.value.cnpj) &&
     !!editForm.value.address &&
     !!editForm.value.responsible &&
+    !!editForm.value.phone &&
+    /^\+55 \(\d{2}\) \d{5}-\d{4}$/.test(editForm.value.phone) &&
     editForm.value.latitude >= -90 && editForm.value.latitude <= 90 &&
     editForm.value.longitude >= -180 && editForm.value.longitude <= 180
   );
@@ -293,6 +303,7 @@ onMounted(async () => {
         cnpj: authStore.user.cnpj || '',
         address: authStore.user.address || '',
         responsible: authStore.user.responsible || '',
+        phone: authStore.user.phone || '',
         latitude: Number(authStore.user.latitude) || 0,
         longitude: Number(authStore.user.longitude) || 0,
         use_bulk_pricing: authStore.user.use_bulk_pricing || false,

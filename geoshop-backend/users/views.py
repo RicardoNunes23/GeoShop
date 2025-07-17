@@ -17,7 +17,7 @@ class UserListView(generics.ListAPIView):
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = CustomUser.objects.all()
-    serializer_class = StoreUpdateSerializer  # Usando StoreUpdateSerializer para atualização
+    serializer_class = StoreUpdateSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -52,6 +52,7 @@ class CustomTokenObtainPairView(APIView):
                 'username': user.username,
                 'email': user.email,
                 'user_type': user.user_type,
+                'phone': user.phone,
             }
             return Response(data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

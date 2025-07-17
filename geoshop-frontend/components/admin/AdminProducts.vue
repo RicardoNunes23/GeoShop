@@ -118,7 +118,7 @@
             <v-col cols="12">
               <p><strong>Produto/ Marca:</strong> {{ selectedProduct.name }}</p>
               <p><strong>Tipo de Embalagem:</strong> {{ selectedProduct.package_type }}</p>
-              <p><strong>Quantidade:</strong> {{ selectedProduct.quantity }}{{ selectedProduct.weight_unit }}</p>
+              <p><strong>Quantidade:</strong> {{ formatQuantity(selectedProduct.quantity, selectedProduct.weight_unit) }}</p>
               <p><strong>Descrição:</strong> {{ selectedProduct.description || 'Sem descrição' }}</p>
             </v-col>
           </v-row>

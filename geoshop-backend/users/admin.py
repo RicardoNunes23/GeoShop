@@ -1,25 +1,24 @@
-# admin.py
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import CustomUser
 
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
-    list_display = ['username', 'email', 'user_type', 'is_staff', 'use_bulk_pricing', 'has_loyalty_card']
+    list_display = ['username', 'email', 'user_type', 'phone', 'is_staff', 'use_bulk_pricing', 'has_loyalty_card']
     
     # Campos para edição
     fieldsets = UserAdmin.fieldsets + (
-        (None, {'fields': ('user_type', 'cnpj', 'address', 'responsible', 'latitude', 'longitude')}),
+        (None, {'fields': ('user_type', 'cnpj', 'address', 'responsible', 'phone', 'latitude', 'longitude')}),
         ('Configurações da Loja', {
             'fields': ('use_bulk_pricing', 'has_loyalty_card'),
-            'classes': ('collapse',)  # Opcional: mostra em seção recolhível
+            'classes': ('collapse',)
         }),
     )
     
     # Campos para criação
     add_fieldsets = UserAdmin.add_fieldsets + (
         (None, {
-            'fields': ('user_type', 'cnpj', 'address', 'responsible', 'latitude', 'longitude')
+            'fields': ('user_type', 'cnpj', 'address', 'responsible', 'phone', 'latitude', 'longitude')
         }),
     )
     

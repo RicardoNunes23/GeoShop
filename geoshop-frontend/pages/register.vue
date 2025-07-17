@@ -3,7 +3,6 @@
     <v-main>
       <v-container fluid class="fill-height">
         <v-row class="fill-height" no-gutters>
-          <!-- Coluna da imagem (esquerda) -->
           <v-col cols="12" md="6" class="d-none d-md-flex">
             <v-img
               src="https://source.unsplash.com/random/800x600?city"
@@ -19,7 +18,6 @@
             </v-img>
           </v-col>
 
-          <!-- Coluna do formulário (direita) -->
           <v-col cols="12" md="6" class="d-flex align-center justify-center">
             <v-card flat class="px-8 py-6" max-width="500">
               <v-card-title class="text-h4 font-weight-bold mb-6">
@@ -33,7 +31,6 @@
 
               <v-card-text>
                 <v-window v-model="activeTab">
-                  <!-- Formulário do Cliente -->
                   <v-window-item value="client">
                     <v-form @submit.prevent="registerClient" class="mt-4">
                       <v-text-field
@@ -71,7 +68,6 @@
                     </v-form>
                   </v-window-item>
 
-                  <!-- Formulário da Loja -->
                   <v-window-item value="store">
                     <v-form @submit.prevent="registerStore" class="mt-4">
                       <v-text-field
@@ -119,6 +115,14 @@
                         class="mb-4"
                       ></v-text-field>
 
+                      <v-text-field
+                        v-model="store.phone"
+                        label="Telefone"
+                        v-mask="'+55 (##) #####-####'"
+                        required
+                        class="mb-4"
+                      ></v-text-field>
+
                       <v-row>
                         <v-col cols="6">
                           <v-text-field
@@ -142,7 +146,6 @@
                         </v-col>
                       </v-row>
 
-                      <!-- Novos campos específicos para lojas -->
                       <v-checkbox
                         v-model="store.use_bulk_pricing"
                         label="Trabalhar com quantidade mínima?"
@@ -197,22 +200,22 @@
 </template>
 
 <script lang="ts" setup>
-import { useAuthStore } from '~/stores/auth'
-import { useRouter } from 'vue-router'
-import { mask } from 'vue-the-mask'
+import { useAuthStore } from '~/stores/auth';
+import { useRouter } from 'vue-router';
+import { mask } from 'vue-the-mask';
 
-const authStore = useAuthStore()
-const router = useRouter()
+const authStore = useAuthStore();
+const router = useRouter();
 
-const activeTab = ref<'client' | 'store'>('client')
-const loading = ref(false)
-const error = ref('')
+const activeTab = ref<'client' | 'store'>('client');
+const loading = ref(false);
+const error = ref('');
 
 const client = reactive({
   username: '',
   email: '',
   password: ''
-})
+});
 
 const store = reactive({
   username: '',
@@ -221,29 +224,30 @@ const store = reactive({
   cnpj: '',
   address: '',
   responsible: '',
+  phone: '',
   latitude: 0,
   longitude: 0,
-  use_bulk_pricing: false, // Novo campo
-  has_loyalty_card: false  // Novo campo
-})
+  use_bulk_pricing: false,
+  has_loyalty_card: false
+});
 
 async function registerClient() {
   try {
-    loading.value = true
-    error.value = ''
-    await authStore.registerClient(client.username, client.email, client.password)
-    await router.push('/login')
+    loading.value = true;
+    error.value = '';
+    await authStore.registerClient(client.username, client.email, client.password);
+    await router.push('/login');
   } catch (err: any) {
-    error.value = err.message || 'Erro ao registrar cliente'
+    error.value = err.message || 'Erro ao registrar cliente';
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 async function registerStore() {
   try {
-    loading.value = true
-    error.value = ''
+    loading.value = true;
+    error.value = '';
     
     const storeData = {
       username: store.username,
@@ -252,23 +256,23 @@ async function registerStore() {
       cnpj: store.cnpj,
       address: store.address,
       responsible: store.responsible,
+      phone: store.phone,
       latitude: Number(store.latitude),
       longitude: Number(store.longitude),
       use_bulk_pricing: store.use_bulk_pricing,
       has_loyalty_card: store.has_loyalty_card
-    }
+    };
     
-    await authStore.registerStore(storeData)
-    await router.push('/login')
+    await authStore.registerStore(storeData);
+    await router.push('/login');
   } catch (err: any) {
-    error.value = err.message || 'Erro ao registrar loja'
+    error.value = err.message || 'Erro ao registrar loja';
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-// Diretiva para máscara do CNPJ
-const vMask = mask
+const vMask = mask;
 </script>
 
 <style scoped>

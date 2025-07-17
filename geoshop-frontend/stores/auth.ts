@@ -9,10 +9,11 @@ interface User {
   cnpj?: string;
   address?: string;
   responsible?: string;
+  phone?: string;
   latitude?: number;
   longitude?: number;
-  use_bulk_pricing?: boolean; // Novo campo
-  has_loyalty_card?: boolean; // Novo campo
+  use_bulk_pricing?: boolean;
+  has_loyalty_card?: boolean;
 }
 
 interface AuthState {
@@ -120,6 +121,7 @@ export const useAuthStore = defineStore('auth', {
       cnpj: string;
       address: string;
       responsible: string;
+      phone: string;
       latitude: number;
       longitude: number;
       use_bulk_pricing: boolean;
@@ -144,6 +146,7 @@ export const useAuthStore = defineStore('auth', {
       cnpj?: string;
       address?: string;
       responsible?: string;
+      phone?: string;
       latitude?: number;
       longitude?: number;
       use_bulk_pricing?: boolean;
@@ -152,7 +155,6 @@ export const useAuthStore = defineStore('auth', {
       if (!this.token || !this.isStore) throw new Error('Não autorizado');
 
       try {
-        // Garante que os campos numéricos sejam números
         if (profileData.latitude) profileData.latitude = Number(profileData.latitude);
         if (profileData.longitude) profileData.longitude = Number(profileData.longitude);
 
@@ -180,16 +182,17 @@ export const useAuthStore = defineStore('auth', {
       cnpj?: string;
       address?: string;
       responsible?: string;
+      phone?: string;
       use_bulk_pricing?: boolean;
       has_loyalty_card?: boolean;
     }) {
       if (!this.token || !this.isAdmin) throw new Error('Não autorizado');
 
       try {
-        // Para usuários que não são lojas, remove os campos específicos
         if (userData.user_type !== 'store') {
           delete userData.use_bulk_pricing;
           delete userData.has_loyalty_card;
+          delete userData.phone;
         }
 
         const response = await axios.put(
