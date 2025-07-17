@@ -95,8 +95,7 @@
                 <tr>
                   <th>Username</th>
                   <th>Email</th>
-                
-              
+                  <th>Plano</th>
                   <th>Telefone</th>
                   <th>Responsável</th>
                   <th>Qtd. Mínima</th>
@@ -108,12 +107,13 @@
                 <tr v-for="user in paginatedUsers" :key="user.id">
                   <td>{{ user.username }}</td>
                   <td>{{ user.email || 'Não informado' }}</td>
-                  
-                 
-               
+                  <td>
+                    <span v-if="user.active_plan">{{ user.active_plan.name }}</span>
+                    <span v-else>Nenhum</span>
+                  </td>
                   <td>{{ user.phone || 'N/A' }}</td>
                   <td>{{ user.responsible || 'N/A' }}</td>
-                 <td>
+                  <td>
                     <v-icon v-if="user.use_bulk_pricing" left color="success">
                       mdi-check-circle-outline
                     </v-icon>
@@ -121,7 +121,7 @@
                       mdi-alpha-x-circle-outline
                     </v-icon>
                   </td>
-                   <td>
+                  <td>
                     <v-icon v-if="user.has_loyalty_card" left color="success">
                       mdi-check-circle-outline
                     </v-icon>
@@ -129,8 +129,6 @@
                       mdi-alpha-x-circle-outline
                     </v-icon>
                   </td>
-
-                
                   <td>
                     <div class="d-flex">
                       <v-btn
@@ -141,6 +139,7 @@
                         @click="openDetailsModal(user)"
                       >
                         <v-icon left>mdi-eye</v-icon>
+                        Detalhes
                       </v-btn>
                       <v-btn
                         color="primary"
@@ -150,6 +149,7 @@
                         @click="openEditModal(user)"
                       >
                         <v-icon left>mdi-pencil</v-icon>
+                        Editar
                       </v-btn>
                       <v-btn
                         color="error"
@@ -158,6 +158,7 @@
                         @click="confirmDeleteUser(user)"
                       >
                         <v-icon left>mdi-delete</v-icon>
+                        Excluir
                       </v-btn>
                     </div>
                   </td>
@@ -220,151 +221,183 @@
           </v-window-item>
         </v-window>
 
-        <v-dialog v-model="detailsModal" max-width="600" persistent>
-          <div class="modal-content">
-            <h2 class="text-h5 font-weight-bold text-primary mb-4">
+        <!-- Modal de Detalhes -->
+        <v-dialog v-model="detailsModal" max-width="600">
+          <v-card>
+            <v-card-title class="text-h5 font-weight-bold text-primary">
               Detalhes da Loja
-            </h2>
-            <v-card elevation="0">
-              <v-card-text>
-                <v-row>
-                  <v-col cols="12">
-                    <p><strong>Nome:</strong> {{ selectedUser.username }}</p>
-                    <p><strong>Responsável:</strong> {{ selectedUser.responsible || 'N/A' }}</p>
-                    <p><strong>E-mail:</strong> {{ selectedUser.email || 'N/A' }}</p>
-                    <p><strong>Telefone:</strong> {{ selectedUser.phone || 'N/A' }}</p>
-                    <p><strong>CNPJ:</strong> {{ selectedUser.cnpj || 'N/A' }}</p>
-                    <p><strong>Endereço:</strong> {{ selectedUser.address || 'N/A' }}</p>
-                    <p><strong>Latitude:</strong> {{ selectedUser.latitude || 'N/A' }}</p>
-                    <p><strong>Longitude:</strong> {{ selectedUser.longitude || 'N/A' }}</p>
-                    <p><strong>Trabalha com Qtd. Mínima:</strong> {{ selectedUser.use_bulk_pricing ? 'Sim' : 'Não' }}</p>
-                    <p><strong>Tem Cartão Fidelidade:</strong> {{ selectedUser.has_loyalty_card ? 'Sim' : 'Não' }}</p>
-                  </v-col>
-                </v-row>
-              </v-card-text>
-              <v-card-actions class="justify-end">
-                <v-btn color="grey" @click="detailsModal = false">
-                  Fechar
-                </v-btn>
-              </v-card-actions>
-            </v-card>
-          </div>
-        </v-dialog>
-
-        <v-dialog v-model="editModal" max-width="800" persistent>
-          <div class="modal-content">
-            <h2 class="text-h4 font-weight-bold text-primary">
-              Editar Usuário
-            </h2>
-            <v-form @submit.prevent="submitForm" ref="form">
+            </v-card-title>
+            <v-card-text>
               <v-row>
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="editForm.username"
-                    label="Nome do Usuário"
-                    :prepend-inner-icon="
-                      editForm.user_type === 'store' ? 'mdi-store' : 
-                      editForm.user_type === 'admin' ? 'mdi-account-tie' : 
-                      'mdi-account'
-                    "
-                    outlined
-                    :rules="[v => !!v || 'Nome do usuário é obrigatório']"
-                  />
-                  <v-text-field
-                    v-model="editForm.email"
-                    label="E-mail"
-                    prepend-inner-icon="mdi-email"
-                    type="email"
-                    outlined
-                    :rules="[v => !!v || 'E-mail é obrigatório', v => /.+@.+\..+/.test(v) || 'E-mail inválido']"
-                  />
-                  <v-select
-                    v-model="editForm.user_type"
-                    label="Tipo de Usuário"
-                    :prepend-inner-icon="editForm.user_type === 'store' ? 'mdi-store' : 
-                                         editForm.user_type === 'admin' ? 'mdi-account-tie' : 
-                                         'mdi-account'"
-                    :items="['admin', 'store', 'client']"
-                    outlined
-                    :rules="[v => !!v || 'Tipo de usuário é obrigatório']"
-                  />
-                </v-col>
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="editForm.cnpj"
-                    label="CNPJ"
-                    prepend-inner-icon="mdi-file-document"
-                    v-mask="'##.###.###/####-##'"
-                    outlined
-                    :rules="[v => !v || /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/.test(v) || 'CNPJ inválido']"
-                  />
-                  <v-text-field
-                    v-model="editForm.address"
-                    label="Endereço"
-                    prepend-inner-icon="mdi-map-marker"
-                    outlined
-                  />
-                  <v-text-field
-                    v-model="editForm.responsible"
-                    label="Responsável"
-                    prepend-inner-icon="mdi-account"
-                    outlined
-                  />
-                  <v-text-field
-                    v-model="editForm.phone"
-                    label="Telefone"
-                    prepend-inner-icon="mdi-phone"
-                    v-mask="'+55 (##) #####-####'"
-                    outlined
-                    v-if="editForm.user_type === 'store'"
-                  />
-                  <template v-if="editForm.user_type === 'store'">
-                    <v-checkbox
-                      v-model="editForm.use_bulk_pricing"
-                      label="Trabalha com quantidade mínima?"
-                      class="mt-2"
-                    ></v-checkbox>
-                    <v-checkbox
-                      v-model="editForm.has_loyalty_card"
-                      label="Oferece cartão fidelidade?"
-                      class="mt-2"
-                    ></v-checkbox>
-                  </template>
+                <v-col cols="12">
+                  <p><strong>Nome:</strong> {{ selectedUser.username || 'N/A' }}</p>
+                  <p><strong>Plano:</strong> {{ selectedUser.active_plan?.name || 'Nenhum' }}</p>
+                  <p v-if="selectedUser.active_plan">
+                    <strong>Limite de Produtos:</strong> {{ selectedUser.active_plan.product_limit }}
+                  </p>
+                  <p><strong>Responsável:</strong> {{ selectedUser.responsible || 'N/A' }}</p>
+                  <p><strong>E-mail:</strong> {{ selectedUser.email || 'N/A' }}</p>
+                  <p><strong>Telefone:</strong> {{ selectedUser.phone || 'N/A' }}</p>
+                  <p><strong>CNPJ:</strong> {{ selectedUser.cnpj || 'N/A' }}</p>
+                  <p><strong>Endereço:</strong> {{ selectedUser.address || 'N/A' }}</p>
+                  <p><strong>Trabalha com Qtd. Mínima:</strong> 
+                    {{ selectedUser.use_bulk_pricing ? 'Sim' : 'Não' }}
+                  </p>
+                  <p><strong>Cartão Fidelidade:</strong> 
+                    {{ selectedUser.has_loyalty_card ? 'Sim' : 'Não' }}
+                  </p>
                 </v-col>
               </v-row>
-              <div class="justify-end mt-4 d-flex">
-                <v-btn color="grey" @click="editModal = false">
-                  Cancelar
-                </v-btn>
-                <v-btn
-                  type="submit"
-                  color="primary"
-                  :loading="loading"
-                  :disabled="!editFormValid"
-                >
-                  <v-icon left>mdi-content-save</v-icon>
-                  Salvar Alterações
-                </v-btn>
-              </div>
-            </v-form>
-          </div>
+            </v-card-text>
+            <v-card-actions class="justify-end">
+              <v-btn color="grey" @click="detailsModal = false">
+                Fechar
+              </v-btn>
+            </v-card-actions>
+          </v-card>
         </v-dialog>
 
+        <!-- Modal de Edição -->
+        <v-dialog v-model="editModal" max-width="800" persistent>
+          <v-card>
+            <v-card-title class="text-h4 font-weight-bold text-primary">
+              Editar Usuário
+            </v-card-title>
+            <v-card-text>
+              <v-form @submit.prevent="submitForm" ref="form">
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="editForm.username"
+                      label="Nome do Usuário"
+                      :prepend-inner-icon="
+                        editForm.user_type === 'store' ? 'mdi-store' : 
+                        editForm.user_type === 'admin' ? 'mdi-account-tie' : 
+                        'mdi-account'
+                      "
+                      outlined
+                      :rules="[v => !!v || 'Nome do usuário é obrigatório']"
+                    />
+                    <v-text-field
+                      v-model="editForm.email"
+                      label="E-mail"
+                      prepend-inner-icon="mdi-email"
+                      type="email"
+                      outlined
+                      :rules="[v => !!v || 'E-mail é obrigatório', v => /.+@.+\..+/.test(v) || 'E-mail inválido']"
+                    />
+                    <v-select
+                      v-model="editForm.user_type"
+                      label="Tipo de Usuário"
+                      :prepend-inner-icon="editForm.user_type === 'store' ? 'mdi-store' : 
+                                           editForm.user_type === 'admin' ? 'mdi-account-tie' : 
+                                           'mdi-account'"
+                      :items="['admin', 'store', 'client']"
+                      outlined
+                      :rules="[v => !!v || 'Tipo de usuário é obrigatório']"
+                    />
+                    <v-select
+                      v-if="editForm.user_type === 'store'"
+                      v-model="editForm.active_plan"
+                      label="Plano Ativo"
+                      prepend-inner-icon="mdi-credit-card-outline"
+                      :items="planOptions"
+                      item-title="name"
+                      item-value="id"
+                      return-object
+                      outlined
+                      clearable
+                    >
+                      <template v-slot:item="{ props, item }">
+                        <v-list-item
+                          v-bind="props"
+                          :title="item.raw.name"
+                          :subtitle="`Limite: ${item.raw.product_limit} | R$ ${item.raw.price}`"
+                        ></v-list-item>
+                      </template>
+                    </v-select>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-if="editForm.user_type === 'store'"
+                      v-model="editForm.cnpj"
+                      label="CNPJ"
+                      prepend-inner-icon="mdi-file-document"
+                      v-mask="'##.###.###/####-##'"
+                      outlined
+                      :rules="[v => !v || /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/.test(v) || 'CNPJ inválido']"
+                    />
+                    <v-text-field
+                      v-if="editForm.user_type === 'store'"
+                      v-model="editForm.address"
+                      label="Endereço"
+                      prepend-inner-icon="mdi-map-marker"
+                      outlined
+                    />
+                    <v-text-field
+                      v-if="editForm.user_type === 'store'"
+                      v-model="editForm.responsible"
+                      label="Responsável"
+                      prepend-inner-icon="mdi-account"
+                      outlined
+                    />
+                    <v-text-field
+                      v-if="editForm.user_type === 'store'"
+                      v-model="editForm.phone"
+                      label="Telefone"
+                      prepend-inner-icon="mdi-phone"
+                      v-mask="'+55 (##) #####-####'"
+                      outlined
+                    />
+                    <template v-if="editForm.user_type === 'store'">
+                      <v-checkbox
+                        v-model="editForm.use_bulk_pricing"
+                        label="Trabalha com quantidade mínima?"
+                        class="mt-2"
+                      ></v-checkbox>
+                      <v-checkbox
+                        v-model="editForm.has_loyalty_card"
+                        label="Oferece cartão fidelidade?"
+                        class="mt-2"
+                      ></v-checkbox>
+                    </template>
+                  </v-col>
+                </v-row>
+                <v-card-actions class="justify-end mt-4">
+                  <v-btn color="grey" @click="editModal = false">
+                    Cancelar
+                  </v-btn>
+                  <v-btn
+                    type="submit"
+                    color="primary"
+                    :loading="loading"
+                    :disabled="!editFormValid"
+                  >
+                    <v-icon left>mdi-content-save</v-icon>
+                    Salvar Alterações
+                  </v-btn>
+                </v-card-actions>
+              </v-form>
+            </v-card-text>
+          </v-card>
+        </v-dialog>
+
+        <!-- Modal de Confirmação de Exclusão -->
         <v-dialog v-model="confirmDelete" max-width="500" persistent>
-          <div class="modal-content">
-            <h2 class="text-h5 font-weight-bold text-primary">
+          <v-card>
+            <v-card-title class="text-h5 font-weight-bold text-primary">
               Confirmar Exclusão
-            </h2>
-            <p>
+            </v-card-title>
+            <v-card-text>
               Tem certeza que deseja excluir o usuário <strong>{{ editForm.username }}</strong>? Esta ação não pode ser desfeita.
-            </p>
-            <div class="d-flex justify-end">
-              <v-btn text @click="confirmDelete = false">Cancelar</v-btn>
+            </v-card-text>
+            <v-card-actions class="justify-end">
+              <v-btn color="grey" @click="confirmDelete = false">Cancelar</v-btn>
               <v-btn color="error" @click="deleteUser" :loading="deleting">
-                Confirmar
+                Confirmar Exclusão
               </v-btn>
-            </div>
-          </div>
+            </v-card-actions>
+          </v-card>
         </v-dialog>
 
         <v-alert
@@ -391,19 +424,22 @@ import { debounce } from 'lodash-es';
 const authStore = useAuthStore();
 const router = useRouter();
 
+// Variáveis reativas
 const activeTab = ref('all');
 const page = ref(1);
 const itemsPerPage = ref(10);
 const searchQuery = ref('');
 const detailsModal = ref(false);
 const selectedUser = ref({});
-
+const planOptions = ref([]);
 const loading = ref(false);
 const deleting = ref(false);
 const editModal = ref(false);
 const confirmDelete = ref(false);
 const error = ref('');
 const form = ref(null);
+
+// Formulário de edição
 const editForm = ref({
   id: null,
   username: '',
@@ -414,13 +450,16 @@ const editForm = ref({
   responsible: '',
   phone: '',
   use_bulk_pricing: false,
-  has_loyalty_card: false
+  has_loyalty_card: false,
+  active_plan: null
 });
 
+// Busca com debounce
 const debouncedSearch = debounce(() => {
   page.value = 1;
 }, 500);
 
+// Filtra usuários
 const filteredUsers = computed(() => {
   let users = authStore.users;
   
@@ -442,16 +481,19 @@ const filteredUsers = computed(() => {
   return users;
 });
 
+// Calcula total de páginas
 const totalPages = computed(() => {
   return Math.ceil(filteredUsers.value.length / itemsPerPage.value);
 });
 
+// Paginação
 const paginatedUsers = computed(() => {
   const start = (page.value - 1) * itemsPerPage.value;
   const end = start + itemsPerPage.value;
   return filteredUsers.value.slice(start, end);
 });
 
+// Validação do formulário
 const editFormValid = computed(() => {
   return (
     !!editForm.value.username &&
@@ -461,22 +503,32 @@ const editFormValid = computed(() => {
   );
 });
 
+// Carrega usuários
 const loadUsers = async () => {
   try {
     loading.value = true;
     await authStore.fetchAllUsers();
-  } catch (error) {
-    console.error('Erro ao carregar usuários:', error);
+  } catch (err) {
     error.value = 'Erro ao carregar lista de usuários';
+    console.error('Erro ao carregar usuários:', err);
   } finally {
     loading.value = false;
   }
 };
 
-const refreshUsers = () => {
-  loadUsers();
+// Carrega planos
+const fetchPlans = async () => {
+  try {
+    const planStore = usePlanStore();
+    await planStore.fetchPlans();
+    planOptions.value = planStore.plans;
+  } catch (err) {
+    error.value = 'Erro ao carregar planos disponíveis';
+    console.error('Erro ao carregar planos:', err);
+  }
 };
 
+// Formata tipo de usuário
 const formatUserType = (type) => {
   const types = {
     admin: 'Administrador',
@@ -486,11 +538,13 @@ const formatUserType = (type) => {
   return types[type] || type;
 };
 
+// Abre modal de detalhes
 const openDetailsModal = (user) => {
-  selectedUser.value = { ...user };
+  selectedUser.value = JSON.parse(JSON.stringify(user));
   detailsModal.value = true;
 };
 
+// Abre modal de edição
 const openEditModal = (user) => {
   editForm.value = {
     id: user.id,
@@ -502,16 +556,19 @@ const openEditModal = (user) => {
     responsible: user.responsible || '',
     phone: user.phone || '',
     use_bulk_pricing: user.use_bulk_pricing || false,
-    has_loyalty_card: user.has_loyalty_card || false
+    has_loyalty_card: user.has_loyalty_card || false,
+    active_plan: user.active_plan || null
   };
   editModal.value = true;
 };
 
+// Confirma exclusão
 const confirmDeleteUser = (user) => {
   editForm.value = { ...user };
   confirmDelete.value = true;
 };
 
+// Submete formulário
 const submitForm = async () => {
   const { valid } = await form.value.validate();
   if (valid) {
@@ -519,11 +576,19 @@ const submitForm = async () => {
       loading.value = true;
       error.value = '';
       
-      const formData = { ...editForm.value };
+      const formData = { 
+        ...editForm.value,
+        active_plan_id: editForm.value.active_plan?.id || null
+      };
+      
       if (formData.user_type !== 'store') {
+        delete formData.cnpj;
+        delete formData.address;
+        delete formData.responsible;
+        delete formData.phone;
         delete formData.use_bulk_pricing;
         delete formData.has_loyalty_card;
-        delete formData.phone;
+        delete formData.active_plan_id;
       }
       
       await authStore.updateUser(formData);
@@ -540,6 +605,7 @@ const submitForm = async () => {
   }
 };
 
+// Exclui usuário
 const deleteUser = async () => {
   try {
     deleting.value = true;
@@ -555,31 +621,35 @@ const deleteUser = async () => {
   }
 };
 
+// Configuração da página
 definePageMeta({
   middleware: ['auth'],
 });
 
+// Carrega dados ao montar o componente
 onMounted(async () => {
   if (!authStore.isAdmin) {
     return navigateTo('/');
   }
   await loadUsers();
+  await fetchPlans();
 });
 </script>
 
 <style lang="scss" scoped>
 .admin-container {
   min-height: 100vh;
-  padding: 0;
+  padding: 20px;
   margin: 0;
   width: 100%;
   background: #fff;
-  border: none;
 
   h1 {
     color: #2c3e50;
     margin-bottom: 1.5rem;
-    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
 }
 
@@ -588,6 +658,7 @@ onMounted(async () => {
   font-weight: bold;
   padding: 1rem;
   background-color: #fde8e8;
+  border-radius: 4px;
 }
 
 .controls {
@@ -595,23 +666,22 @@ onMounted(async () => {
   align-items: center;
   margin-bottom: 1.5rem;
   gap: 16px;
-  width: 40%; 
+  width: 100%;
+  max-width: 500px;
+
+  .search-field {
+    width: 100%;
+  }
 }
 
 .users-table {
   width: 100%;
   margin-top: 1rem;
-  border: none;
 
   th {
     background-color: #f8f9fa;
     font-weight: 600;
     color: #2c3e50;
-    border: none;
-  }
-
-  tr {
-    border: none;
   }
 
   tr:hover {
@@ -619,15 +689,10 @@ onMounted(async () => {
   }
 }
 
-.modal-content {
-  padding: 16px;
-  background: white;
-  border: none;
-}
-
 .v-btn {
   text-transform: none;
   letter-spacing: normal;
+  font-weight: 500;
 }
 
 .v-text-field {
@@ -635,6 +700,10 @@ onMounted(async () => {
 }
 
 @media (max-width: 600px) {
+  .admin-container {
+    padding: 10px;
+  }
+
   .text-h4 {
     font-size: 1.5rem !important;
   }
@@ -646,6 +715,7 @@ onMounted(async () => {
   .v-btn {
     min-width: 36px !important;
     padding: 0 8px !important;
+    font-size: 0.75rem;
   }
   
   .controls {

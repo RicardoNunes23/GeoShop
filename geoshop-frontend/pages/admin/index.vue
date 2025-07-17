@@ -18,7 +18,7 @@ import { useRoute, useRouter } from '#app';
 import { computed } from 'vue';
 
 // Importe os componentes que serão usados
-import UserProfile from '~/components/admin/UserProfile.vue';
+import UserProfile from '~/components/admin/AdminUserProfile.vue';
 import AdminProducts from '~/components/admin/AdminProducts.vue';
 import AdminStoreProducts from '~/components/admin/AdminStoreProducts.vue';
 import AdminPlans from '~/components/admin/AdminPlans.vue';

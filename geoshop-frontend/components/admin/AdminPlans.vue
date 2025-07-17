@@ -107,22 +107,22 @@
               class="mb-4"
             />
             
-            <v-text-field
-                v-model.number="formData.price"
-                label="Preço (R$)"
-                type="number"
-                step="0.01"
-                min="0"
-                :rules="[
-                    v => (v || v === 0) || 'Preço é obrigatório',
-                    v => Number(v) >= 0 || 'Preço não pode ser negativo',
-                    v => !isNaN(v) || 'Valor inválido'
-                ]"
-                required
-                outlined
-                class="mb-4"
-                @blur="formatPrice"
-                />
+           <v-text-field
+  v-model="formData.price"
+  label="Preço (R$)"
+  type="number"
+  step="0.01"
+  min="0"
+  :rules="[
+    v => (v !== null && v !== '' && v !== undefined) || 'Preço é obrigatório',
+    v => Number(v) >= 0 || 'Preço não pode ser negativo',
+    v => /^\d+(\.\d{1,2})?$/.test(v) || 'Formato inválido (use 00.00)'
+  ]"
+  required
+  outlined
+  class="mb-4"
+  @blur="formatPrice"
+/>
             
             <v-text-field
               v-model.number="formData.product_limit"
@@ -234,10 +234,11 @@ onMounted(() => {
 })
 
 function formatPrice() {
-  if (formData.value.price === '') {
+  if (formData.value.price === '' || formData.value.price === null) {
     formData.value.price = 0
   } else {
-    formData.value.price = Number(formData.value.price).toFixed(2)
+    // Garante que o valor tenha 2 casas decimais
+    formData.value.price = parseFloat(formData.value.price).toFixed(2)
   }
 }
 
