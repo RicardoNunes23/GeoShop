@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',  # Adicionado
     'users',
+    'products',
 ]
 
 MIDDLEWARE = [
@@ -61,8 +62,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'geoshop',
-        'USER': 'admin',  # Substitua pelo seu usuário do PostgreSQL
-        'PASSWORD': '060914',  # Substitua pela sua senha
+        'USER': 'admin', 
+        'PASSWORD': '060914', 
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -137,3 +138,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.CustomUser'
+
+# Configurações de mídia para upload de imagens
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

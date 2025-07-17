@@ -1,36 +1,52 @@
-import { defineNuxtRouteMiddleware, navigateTo } from '#app';
-import { useAuthStore } from '~/stores/auth';
+export default defineNuxtRouteMiddleware(async (to) => {
+  const auth = useAuthStore();
+  const publicRoutes = ['/login', '/register'];
 
-export default defineNuxtRouteMiddleware((to, from) => {
-  const authStore = useAuthStore();
+  if (publicRoutes.includes(to.path)) return;
 
-  // Verifica se estamos no lado do cliente
-  const isClient = process.client;
+  if (process.client && !auth.token) {
+    const token = localStorage.getItem('token');
+    if (token) auth.token = token;
+  }
 
-  // Verifica se o usuário está autenticado (tem token e user no store)
-  if (!authStore.token || !authStore.user) {
-    if (isClient) {
-      // No lado do cliente, tenta recuperar o token do localStorage
-      const token = localStorage.getItem('token');
-      if (token) {
-        console.log('Token encontrado no localStorage:', token);
-        // Tenta buscar os dados do usuário
-        return authStore.fetchStoreProfile().catch((error) => {
-          console.error('Falha ao buscar perfil:', error);
-          return navigateTo('/login');
-        });
+  if (!auth.token) {
+    return navigateTo('/login');
+  }
+
+  if (!auth.user) {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        auth.user = JSON.parse(storedUser);
+        if (auth.isAdmin) {
+          await auth.fetchAllUsers();
+        } else if (auth.isStore) {
+          await auth.fetchProfile();
+        } else {
+          auth.users = [auth.user];
+        }
       } else {
-        console.log('Nenhum token encontrado no localStorage, redirecionando para /login');
+        auth.logout();
         return navigateTo('/login');
       }
-    } else {
-      // No lado do servidor, redireciona para /login se não houver token
-      console.log('Executando no servidor, nenhum token disponível, redirecionando para /login');
+    } catch (error) {
+      console.error('Falha ao carregar perfil:', error);
+      auth.logout();
       return navigateTo('/login');
     }
   }
 
-  // Se o usuário está autenticado, permite o acesso à rota
-  console.log('Usuário autenticado, permitindo acesso à rota:', to.path);
+  if (auth.isStore && to.path.startsWith('/admin')) {
+    return navigateTo('/store?view=profile');
+  }
+
+  if (auth.isStore && !to.path.startsWith('/store')) {
+    return navigateTo('/store?view=profile');
+  }
+
+  if (auth.isAdmin && !to.path.startsWith('/admin')) {
+    return navigateTo('/admin?view=profile');
+  }
+
   return;
 });

@@ -142,6 +142,19 @@
                         </v-col>
                       </v-row>
 
+                      <!-- Novos campos específicos para lojas -->
+                      <v-checkbox
+                        v-model="store.use_bulk_pricing"
+                        label="Trabalhar com quantidade mínima?"
+                        class="mt-2"
+                      ></v-checkbox>
+
+                      <v-checkbox
+                        v-model="store.has_loyalty_card"
+                        label="Oferecer cartão fidelidade?"
+                        class="mt-2"
+                      ></v-checkbox>
+
                       <v-btn
                         type="submit"
                         color="primary"
@@ -209,7 +222,9 @@ const store = reactive({
   address: '',
   responsible: '',
   latitude: 0,
-  longitude: 0
+  longitude: 0,
+  use_bulk_pricing: false, // Novo campo
+  has_loyalty_card: false  // Novo campo
 })
 
 async function registerClient() {
@@ -231,9 +246,16 @@ async function registerStore() {
     error.value = ''
     
     const storeData = {
-      ...store,
+      username: store.username,
+      email: store.email,
+      password: store.password,
+      cnpj: store.cnpj,
+      address: store.address,
+      responsible: store.responsible,
       latitude: Number(store.latitude),
-      longitude: Number(store.longitude)
+      longitude: Number(store.longitude),
+      use_bulk_pricing: store.use_bulk_pricing,
+      has_loyalty_card: store.has_loyalty_card
     }
     
     await authStore.registerStore(storeData)

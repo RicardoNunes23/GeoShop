@@ -28,10 +28,6 @@
       
       <div v-else>
         <v-tabs v-model="activeTab" grow>
-          <!-- <v-tab value="all">
-            <v-icon start>mdi-account-multiple</v-icon>
-            Todos
-          </v-tab> -->
           <v-tab value="admin">
             <v-icon start>mdi-account-tie</v-icon>
             Administradores
@@ -47,61 +43,6 @@
         </v-tabs>
 
         <v-window v-model="activeTab" class="mt-4">
-          <!-- <v-window-item value="all">
-            <v-table class="users-table">
-              <thead>
-                <tr>
-                  <th>Username</th>
-                  <th>Email</th>
-                  <th>Tipo</th>
-                  <th>CNPJ (Lojas)</th>
-                  <th>Endereço</th>
-                  <th>Responsável</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="user in paginatedUsers" :key="user.id">
-                  <td>{{ user.username }}</td>
-                  <td>{{ user.email || 'Não informado' }}</td>
-                  <td>{{ formatUserType(user.user_type) }}</td>
-                  <td>{{ user.cnpj || 'N/A' }}</td>
-                  <td>{{ user.address || 'N/A' }}</td>
-                  <td>{{ user.responsible || 'N/A' }}</td>
-                  <td>
-                    <div class="d-flex">
-                      <v-btn
-                        color="primary"
-                        variant="text"
-                        size="small"
-                        class="mr-2"
-                        @click="openEditModal(user)"
-                      >
-                        <v-icon left>mdi-pencil</v-icon>
-                      
-                      </v-btn>
-                      <v-btn
-                        color="error"
-                        variant="text"
-                        size="small"
-                        @click="confirmDeleteUser(user)"
-                      >
-                        <v-icon left>mdi-delete</v-icon>
-                       
-                      </v-btn>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </v-table>
-            <v-pagination
-              v-model="page"
-              :length="totalPages"
-              :total-visible="7"
-              class="mt-4"
-            ></v-pagination>
-          </v-window-item> -->
-          
           <v-window-item value="admin">
             <v-table class="users-table">
               <thead>
@@ -117,7 +58,6 @@
                   <td>{{ user.username }}</td>
                   <td>{{ user.email || 'Não informado' }}</td>
                   <td>{{ formatUserType(user.user_type) }}</td>
-                 
                   <td>
                     <div class="d-flex">
                       <v-btn
@@ -128,7 +68,6 @@
                         @click="openEditModal(user)"
                       >
                         <v-icon left>mdi-pencil</v-icon>
-                       
                       </v-btn>
                       <v-btn
                         color="error"
@@ -137,7 +76,6 @@
                         @click="confirmDeleteUser(user)"
                       >
                         <v-icon left>mdi-delete</v-icon>
-                        
                       </v-btn>
                     </div>
                   </td>
@@ -162,6 +100,8 @@
                   <th>CNPJ</th>
                   <th>Endereço</th>
                   <th>Responsável</th>
+                  <th>Qtd. Mínima</th>
+                  <th>Cartão Fidelidade</th>
                   <th></th>
                 </tr>
               </thead>
@@ -173,6 +113,8 @@
                   <td>{{ user.cnpj || 'N/A' }}</td>
                   <td>{{ user.address || 'N/A' }}</td>
                   <td>{{ user.responsible || 'N/A' }}</td>
+                  <td>{{ user.use_bulk_pricing ? 'Sim' : 'Não' }}</td>
+                  <td>{{ user.has_loyalty_card ? 'Sim' : 'Não' }}</td>
                   <td>
                     <div class="d-flex">
                       <v-btn
@@ -183,7 +125,6 @@
                         @click="openEditModal(user)"
                       >
                         <v-icon left>mdi-pencil</v-icon>
-                       
                       </v-btn>
                       <v-btn
                         color="error"
@@ -192,7 +133,6 @@
                         @click="confirmDeleteUser(user)"
                       >
                         <v-icon left>mdi-delete</v-icon>
-                        
                       </v-btn>
                     </div>
                   </td>
@@ -214,7 +154,6 @@
                   <th>Nome</th>
                   <th>Email</th>
                   <th>Tipo</th>
-                  
                   <th></th>
                 </tr>
               </thead>
@@ -223,7 +162,6 @@
                   <td>{{ user.username }}</td>
                   <td>{{ user.email || 'Não informado' }}</td>
                   <td>{{ formatUserType(user.user_type) }}</td>
-                 
                   <td>
                     <div class="d-flex">
                       <v-btn
@@ -234,7 +172,6 @@
                         @click="openEditModal(user)"
                       >
                         <v-icon left>mdi-pencil</v-icon>
-                       
                       </v-btn>
                       <v-btn
                         color="error"
@@ -243,7 +180,6 @@
                         @click="confirmDeleteUser(user)"
                       >
                         <v-icon left>mdi-delete</v-icon>
-                        
                       </v-btn>
                     </div>
                   </td>
@@ -274,7 +210,7 @@
                     label="Nome do Usuário"
                     :prepend-inner-icon="
                       editForm.user_type === 'store' ? 'mdi-store' : 
-                      editForm.user_type === 'admin' ? 'mdi-accoun' : 
+                      editForm.user_type === 'admin' ? 'mdi-account-tie' : 
                       'mdi-account'
                     "
                     outlined
@@ -291,7 +227,9 @@
                 <v-select
                   v-model="editForm.user_type"
                   label="Tipo de Usuário"
-                  :prepend-inner-icon="editForm.user_type === 'store' ? 'mdi-store' : 'mdi-account'"
+                  :prepend-inner-icon="editForm.user_type === 'store' ? 'mdi-store' : 
+                                       editForm.user_type === 'admin' ? 'mdi-account-tie' : 
+                                       'mdi-account'"
                   :items="['admin', 'store', 'client']"
                   outlined
                   :rules="[v => !!v || 'Tipo de usuário é obrigatório']"
@@ -318,6 +256,19 @@
                   prepend-inner-icon="mdi-account"
                   outlined
                 />
+                <!-- Novos campos para lojas -->
+                <template v-if="editForm.user_type === 'store'">
+                  <v-checkbox
+                    v-model="editForm.use_bulk_pricing"
+                    label="Trabalha com quantidade mínima?"
+                    class="mt-2"
+                  ></v-checkbox>
+                  <v-checkbox
+                    v-model="editForm.has_loyalty_card"
+                    label="Oferece cartão fidelidade?"
+                    class="mt-2"
+                  ></v-checkbox>
+                </template>
               </v-col>
             </v-row>
             <div class="justify-end mt-4 d-flex">
@@ -401,6 +352,8 @@ const editForm = ref({
   cnpj: '',
   address: '',
   responsible: '',
+  use_bulk_pricing: false,
+  has_loyalty_card: false
 });
 
 // Debounce para pesquisa
@@ -442,7 +395,16 @@ const paginatedUsers = computed(() => {
   return filteredUsers.value.slice(start, end);
 });
 
-// Métodos existentes (mantidos iguais)
+// Validação do formulário
+const editFormValid = computed(() => {
+  return (
+    !!editForm.value.username &&
+    !!editForm.value.email &&
+    /.+@.+\..+/.test(editForm.value.email) &&
+    !!editForm.value.user_type
+  );
+});
+
 const loadUsers = async () => {
   try {
     loading.value = true;
@@ -477,6 +439,8 @@ const openEditModal = (user) => {
     cnpj: user.cnpj || '',
     address: user.address || '',
     responsible: user.responsible || '',
+    use_bulk_pricing: user.use_bulk_pricing || false,
+    has_loyalty_card: user.has_loyalty_card || false
   };
   editModal.value = true;
 };
@@ -492,7 +456,15 @@ const submitForm = async () => {
     try {
       loading.value = true;
       error.value = '';
-      await authStore.updateUser(editForm.value);
+      
+      // Remove campos específicos se não for loja
+      const formData = { ...editForm.value };
+      if (formData.user_type !== 'store') {
+        delete formData.use_bulk_pricing;
+        delete formData.has_loyalty_card;
+      }
+      
+      await authStore.updateUser(formData);
       await loadUsers();
       editModal.value = false;
       error.value = 'Usuário atualizado com sucesso!';

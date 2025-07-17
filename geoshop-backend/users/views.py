@@ -84,10 +84,19 @@ class StoreProfileView(APIView):
     def put(self, request):
         if request.user.user_type != 'store':
             return Response({"error": "Acesso negado"}, status=status.HTTP_403_FORBIDDEN)
-        serializer = StoreUpdateSerializer(request.user, data=request.data, partial=True)
+        
+        serializer = StoreUpdateSerializer(
+            request.user, 
+            data=request.data, 
+            partial=True
+        )
+        
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Perfil atualizado com sucesso"})
+            return Response({
+                "message": "Perfil atualizado com sucesso",
+                "data": serializer.data
+            })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):

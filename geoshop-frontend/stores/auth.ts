@@ -11,6 +11,8 @@ interface User {
   responsible?: string;
   latitude?: number;
   longitude?: number;
+  use_bulk_pricing?: boolean; // Novo campo
+  has_loyalty_card?: boolean; // Novo campo
 }
 
 interface AuthState {
@@ -30,35 +32,34 @@ export const useAuthStore = defineStore('auth', {
     isAdmin: (state) => state.user?.user_type === 'admin',
     isStore: (state) => state.user?.user_type === 'store',
     isClient: (state) => state.user?.user_type === 'client',
+    isAuthenticated: (state) => !!state.token,
     visibleUsers(state) {
       if (!state.user) return [];
-      if (this.isAdmin) {
-        return state.users;
-      } else {
-        return state.users.filter(user => user.id === state.user?.id);
-      }
-    }
+      return this.isAdmin ? state.users : state.users.filter(user => user.id === state.user?.id);
+    },
   },
 
   actions: {
     async login(username: string, password: string) {
       try {
-        const response = await axios.post(`${useRuntimeConfig().public.apiBase}/login/`, { 
-          username, 
-          password 
+        const response = await axios.post(`${useRuntimeConfig().public.apiBase}/login/`, {
+          username,
+          password,
         });
-        
+
         this.token = response.data.access;
-        localStorage.setItem('token', this.token);
         this.user = response.data.user;
-        
+        localStorage.setItem('token', this.token);
+        localStorage.setItem('user', JSON.stringify(this.user));
+
         if (this.isAdmin) {
           await this.fetchAllUsers();
+        } else if (this.isStore) {
+          await this.fetchProfile();
         } else {
           this.users = [this.user];
         }
-        
-        console.log('Login realizado com sucesso');
+
         return true;
       } catch (error) {
         console.error('Erro no login:', error);
@@ -66,12 +67,45 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async fetchProfile() {
+      if (!this.token || !this.isStore) throw new Error('Não autorizado');
+
+      try {
+        const response = await axios.get(
+          `${useRuntimeConfig().public.apiBase}/store/profile/`,
+          { headers: { Authorization: `Bearer ${this.token}` } }
+        );
+
+        this.user = { ...this.user, ...response.data };
+        this.users = [this.user];
+        localStorage.setItem('user', JSON.stringify(this.user));
+        return this.user;
+      } catch (error) {
+        console.error('Erro ao buscar perfil:', error);
+        throw error;
+      }
+    },
+
+    async fetchAllUsers() {
+      if (!this.isAdmin) throw new Error('Acesso não autorizado');
+
+      try {
+        const response = await axios.get(`${useRuntimeConfig().public.apiBase}/users/`, {
+          headers: { Authorization: `Bearer ${this.token}` },
+        });
+        this.users = response.data;
+      } catch (error) {
+        console.error('Erro ao buscar usuários:', error);
+        throw error;
+      }
+    },
+
     async registerClient(username: string, email: string, password: string) {
       try {
-        await axios.post(`${useRuntimeConfig().public.apiBase}/api/register/client/`, { 
-          username, 
-          email, 
-          password 
+        await axios.post(`${useRuntimeConfig().public.apiBase}/register/client/`, {
+          username,
+          email,
+          password,
         });
       } catch (error) {
         console.error('Erro ao registrar cliente:', error);
@@ -86,75 +120,51 @@ export const useAuthStore = defineStore('auth', {
       cnpj: string;
       address: string;
       responsible: string;
+      latitude: number;
+      longitude: number;
+      use_bulk_pricing: boolean;
+      has_loyalty_card: boolean;
     }) {
       try {
-        await axios.post(`${useRuntimeConfig().public.apiBase}/api/register/store/`, storeData);
-      } catch (error) {
-        console.error('Erro ao registrar loja:', error);
-        throw new Error('Erro no registro da loja');
-      }
-    },
-
-    async fetchAllUsers() {
-      if (!this.token) throw new Error('Não autenticado');
-      if (!this.isAdmin) throw new Error('Acesso não autorizado');
-
-      try {
-        const response = await axios.get(`${useRuntimeConfig().public.apiBase}/users/`, {
-          headers: { Authorization: `Bearer ${this.token}` },
+        const response = await axios.post(`${useRuntimeConfig().public.apiBase}/register/store/`, {
+          ...storeData,
+          latitude: Number(storeData.latitude),
+          longitude: Number(storeData.longitude),
         });
-        this.users = response.data;
-        console.log('Usuários carregados:', this.users);
-      } catch (error) {
-        console.error('Erro ao buscar usuários:', error);
-        throw new Error('Falha ao carregar usuários');
+        
+        return response.data;
+      } catch (error: any) {
+        console.error('Erro ao registrar loja:', error);
+        throw new Error(error.response?.data?.message || 'Erro no registro da loja');
       }
     },
 
-    async fetchCurrentUser() {
-      if (!this.token || !this.user) throw new Error('Não autenticado');
-
-      try {
-        let endpoint = '';
-        if (this.isStore) {
-          endpoint = '/api/store/profile/';
-        } else {
-          endpoint = `/users/${this.user.id}/`;
-        }
-
-        const response = await axios.get(
-          `${useRuntimeConfig().public.apiBase}${endpoint}`,
-          { headers: { Authorization: `Bearer ${this.token}` } }
-        );
-
-        this.user = response.data;
-        this.users = this.isAdmin ? this.users : [this.user];
-        return this.user;
-      } catch (error) {
-        console.error('Erro ao buscar perfil:', error);
-        throw error;
-      }
-    },
-
-    async updateStoreProfile(profileData: {
+    async updateProfile(profileData: {
       email?: string;
       cnpj?: string;
       address?: string;
       responsible?: string;
       latitude?: number;
       longitude?: number;
+      use_bulk_pricing?: boolean;
+      has_loyalty_card?: boolean;
     }) {
       if (!this.token || !this.isStore) throw new Error('Não autorizado');
 
       try {
+        // Garante que os campos numéricos sejam números
+        if (profileData.latitude) profileData.latitude = Number(profileData.latitude);
+        if (profileData.longitude) profileData.longitude = Number(profileData.longitude);
+
         const response = await axios.put(
-          `${useRuntimeConfig().public.apiBase}/api/store/profile/`,
+          `${useRuntimeConfig().public.apiBase}/store/profile/`,
           profileData,
           { headers: { Authorization: `Bearer ${this.token}` } }
         );
-        
-        this.user = response.data;
-        this.users = this.isAdmin ? this.users.map(u => u.id === this.user.id ? this.user : u) : [this.user];
+
+        this.user = { ...this.user, ...response.data };
+        this.users = [this.user];
+        localStorage.setItem('user', JSON.stringify(this.user));
         return this.user;
       } catch (error) {
         console.error('Erro ao atualizar perfil:', error);
@@ -170,25 +180,33 @@ export const useAuthStore = defineStore('auth', {
       cnpj?: string;
       address?: string;
       responsible?: string;
+      use_bulk_pricing?: boolean;
+      has_loyalty_card?: boolean;
     }) {
       if (!this.token || !this.isAdmin) throw new Error('Não autorizado');
 
       try {
+        // Para usuários que não são lojas, remove os campos específicos
+        if (userData.user_type !== 'store') {
+          delete userData.use_bulk_pricing;
+          delete userData.has_loyalty_card;
+        }
+
         const response = await axios.put(
           `${useRuntimeConfig().public.apiBase}/users/${userData.id}/`,
           userData,
           { headers: { Authorization: `Bearer ${this.token}` } }
         );
-        
+
         this.users = this.users.map(user =>
           user.id === userData.id ? response.data : user
         );
-        
+
         if (this.user?.id === userData.id) {
           this.user = response.data;
+          localStorage.setItem('user', JSON.stringify(this.user));
         }
-        
-        console.log('Usuário atualizado:', response.data);
+
         return response.data;
       } catch (error) {
         console.error('Erro ao atualizar usuário:', error);
@@ -205,31 +223,24 @@ export const useAuthStore = defineStore('auth', {
           `${useRuntimeConfig().public.apiBase}/users/${userId}/`,
           { headers: { Authorization: `Bearer ${this.token}` } }
         );
-        
+
         this.users = this.users.filter(user => user.id !== userId);
-        console.log('Usuário excluído:', userId);
       } catch (error) {
         console.error('Erro ao excluir usuário:', error);
         throw new Error('Falha ao excluir usuário');
       }
     },
 
-    async deleteAccount() {
+    async deleteProfile() {
       if (!this.token || !this.user) throw new Error('Não autenticado');
 
       try {
-        let endpoint = '';
-        if (this.isStore) {
-          endpoint = '/api/store/profile/';
-        } else {
-          endpoint = `/users/${this.user.id}/`;
-        }
-
+        const endpoint = this.isStore ? '/store/profile/' : `/users/${this.user.id}/`;
         await axios.delete(
           `${useRuntimeConfig().public.apiBase}${endpoint}`,
           { headers: { Authorization: `Bearer ${this.token}` } }
         );
-        
+
         this.logout();
       } catch (error) {
         console.error('Erro ao excluir conta:', error);
@@ -242,6 +253,7 @@ export const useAuthStore = defineStore('auth', {
       this.token = null;
       this.users = [];
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
     },
 
     async initialize() {
@@ -249,15 +261,22 @@ export const useAuthStore = defineStore('auth', {
       if (token) {
         this.token = token;
         try {
-          await this.fetchCurrentUser();
-          if (this.isAdmin) {
-            await this.fetchAllUsers();
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            this.user = JSON.parse(storedUser);
+            if (this.isAdmin) {
+              await this.fetchAllUsers();
+            } else if (this.isStore) {
+              await this.fetchProfile();
+            } else {
+              this.users = [this.user];
+            }
           }
         } catch (error) {
           this.logout();
         }
       }
-    }
+    },
   },
 
   persist: {
@@ -265,6 +284,6 @@ export const useAuthStore = defineStore('auth', {
     afterRestore: (context) => {
       const store = useAuthStore();
       store.initialize();
-    }
-  }
+    },
+  },
 });
