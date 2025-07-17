@@ -16,7 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from users.views import ClientRegisterView, StoreRegisterView, StoreProfileView, CustomTokenObtainPairView, UserListView, UserDetailView
+from users.views import (
+    ClientRegisterView, StoreRegisterView, StoreProfileView,
+    CustomTokenObtainPairView, UserListView, UserDetailView
+)
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.conf import settings
 from django.conf.urls.static import static
@@ -30,6 +33,6 @@ urlpatterns = [
     path('api/store/profile/', StoreProfileView.as_view(), name='store_profile'),
     path('api/users/', UserListView.as_view(), name='user-list'),
     path('api/users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
-    path('api/', include('products.urls')), 
-    
+    path('api/', include('products.urls')),
+    path('api/', include('plans.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

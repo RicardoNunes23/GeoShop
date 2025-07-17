@@ -1,12 +1,16 @@
 from rest_framework import serializers
 from .models import CustomUser
+from plans.serializers import PlanSerializer
+from plans.models import Plan
 
 class UserSerializer(serializers.ModelSerializer):
+    active_plan = PlanSerializer(read_only=True)
+    
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'email', 'user_type', 'cnpj', 'address', 
                  'responsible', 'phone', 'latitude', 'longitude', 'use_bulk_pricing', 
-                 'has_loyalty_card']
+                 'has_loyalty_card', 'active_plan']
         read_only_fields = ['id', 'user_type']
 
 class ClientRegisterSerializer(serializers.ModelSerializer):
@@ -28,15 +32,21 @@ class ClientRegisterSerializer(serializers.ModelSerializer):
 
 class StoreRegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    plan_id = serializers.PrimaryKeyRelatedField(
+        queryset=Plan.objects.all(),
+        write_only=True
+    )
 
     class Meta:
         model = CustomUser
         fields = ['username', 'email', 'password', 'cnpj', 'address', 
-                'responsible', 'phone', 'latitude', 'longitude', 'use_bulk_pricing', 
-                'has_loyalty_card']
+                'responsible', 'phone', 'latitude', 'longitude', 
+                'use_bulk_pricing', 'has_loyalty_card', 'plan_id']
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
+        from plans.models import StoreSubscription
+        plan_id = validated_data.pop('plan_id')
         user = CustomUser.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
@@ -51,6 +61,12 @@ class StoreRegisterSerializer(serializers.ModelSerializer):
             use_bulk_pricing=validated_data.get('use_bulk_pricing', False),
             has_loyalty_card=validated_data.get('has_loyalty_card', False)
         )
+        StoreSubscription.objects.create(
+            store=user,
+            plan=plan_id,
+            is_active=False,
+            payment_status='pending'
+        )
         return user
 
 class StoreUpdateSerializer(serializers.ModelSerializer):
@@ -60,7 +76,6 @@ class StoreUpdateSerializer(serializers.ModelSerializer):
                 'phone', 'latitude', 'longitude', 'use_bulk_pricing', 'has_loyalty_card']
         
     def validate(self, data):
-        # Validação adicional para garantir que os campos só sejam usados por lojas
         if self.instance and self.instance.user_type != 'store':
             if 'use_bulk_pricing' in data or 'has_loyalty_card' in data or 'phone' in data:
                 raise serializers.ValidationError(

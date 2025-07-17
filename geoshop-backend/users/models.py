@@ -27,6 +27,16 @@ class CustomUser(AbstractUser):
         verbose_name="Oferece cartão fidelidade?",
         help_text="Ative para permitir preços especiais para clientes fidelizados"
     )
+    
+    # Campo para o plano ativo
+    active_plan = models.ForeignKey(
+        'plans.Plan',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users',
+        verbose_name="Plano Ativo"
+    )
 
     def __str__(self):
         return self.username
@@ -37,4 +47,5 @@ class CustomUser(AbstractUser):
             self.use_bulk_pricing = False
             self.has_loyalty_card = False
             self.phone = None
+            self.active_plan = None
         super().save(*args, **kwargs)

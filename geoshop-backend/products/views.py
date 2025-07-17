@@ -35,23 +35,31 @@ class StoreProductListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Obtém o parâmetro store_id da query
         store_id = self.request.query_params.get('store_id')
-        
         if self.request.user.user_type == 'store':
-            # Lojas só podem ver seus próprios produtos
             return StoreProduct.objects.filter(store=self.request.user)
         elif self.request.user.user_type == 'admin' and store_id:
-            # Administradores podem filtrar por store_id
             try:
                 return StoreProduct.objects.filter(store_id=store_id)
             except ValueError:
-                return StoreProduct.objects.none()  # Retorna vazio se store_id for inválido
-        return StoreProduct.objects.all()  # Administradores sem store_id veem todos os produtos
+                return StoreProduct.objects.none()
+        return StoreProduct.objects.all()
 
     def perform_create(self, serializer):
         if self.request.user.user_type != 'store':
             raise permissions.PermissionDenied("Apenas lojas podem adicionar produtos.")
+        
+        # Verifica se a loja tem um plano ativo
+        if not self.request.user.active_plan:
+            raise permissions.PermissionDenied("Nenhum plano ativo. Escolha um plano e conclua o pagamento primeiro.")
+        
+        # Verifica o limite de produtos
+        product_count = StoreProduct.objects.filter(store=self.request.user).count()
+        if product_count >= self.request.user.active_plan.product_limit:
+            raise permissions.PermissionDenied(
+                f"Limite de {self.request.user.active_plan.product_limit} produtos atingido para o plano {self.request.user.active_plan.get_name_display()}."
+            )
+        
         serializer.save(store=self.request.user)
 
 class StoreProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
@@ -80,7 +88,7 @@ class ClientCartListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         if self.request.user.user_type == 'client':
             return ClientCart.objects.filter(client=self.request.user)
-        return ClientCart.objects.none()  # Retorna queryset vazio para não-clientes
+        return ClientCart.objects.none()
 
     def perform_create(self, serializer):
         if self.request.user.user_type != 'client':
@@ -111,17 +119,14 @@ class CartItemCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        # Verifica se o usuário é cliente
         if self.request.user.user_type != 'client':
             raise permissions.PermissionDenied("Apenas clientes podem adicionar itens ao carrinho.")
         
-        # Obtém ou cria um carrinho ativo para o cliente
         cart, created = ClientCart.objects.get_or_create(
             client=self.request.user,
             is_completed=False
         )
         
-        # Salva o item no carrinho
         serializer.save(cart=cart)
 
 class CartItemRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):

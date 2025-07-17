@@ -1,13 +1,10 @@
-"""
-Django settings for geoshop project.
-"""
-
 import os
 from pathlib import Path
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-your-secret-key-here'  # Substitua por uma chave segura em produção
+SECRET_KEY = 'django-insecure-your-secret-key-here'
 
 DEBUG = True
 
@@ -22,13 +19,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
-    'corsheaders',  # Adicionado
+    'corsheaders',
     'users',
     'products',
+    'plans',
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # Adicionado no início
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -62,8 +60,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'geoshop',
-        'USER': 'admin', 
-        'PASSWORD': '060914', 
+        'USER': 'admin',
+        'PASSWORD': '060914',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -90,8 +88,6 @@ REST_FRAMEWORK = {
     ),
 }
 
-from datetime import timedelta
-
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -101,7 +97,7 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',  # Adicionado para permitir o frontend
+    'http://localhost:3000',
 ]
 
 CORS_ALLOW_METHODS = [
@@ -139,6 +135,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.CustomUser'
 
-# Configurações de mídia para upload de imagens
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Configurações do Stripe
+STRIPE_SECRET_KEY = 'sua-chave-secreta-do-stripe'
+STRIPE_PUBLISHABLE_KEY = 'sua-chave-publicavel-do-stripe'
