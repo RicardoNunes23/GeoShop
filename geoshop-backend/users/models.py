@@ -14,6 +14,25 @@ class CustomUser(AbstractUser):
     responsible = models.CharField(max_length=100, blank=True, null=True)
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
+    
+    # Novos campos específicos para lojas
+    use_bulk_pricing = models.BooleanField(
+        default=False,
+        verbose_name="Trabalha com quantidade mínima?",
+        help_text="Ative para permitir preços por quantidade nos produtos"
+    )
+    has_loyalty_card = models.BooleanField(
+        default=False,
+        verbose_name="Oferece cartão fidelidade?",
+        help_text="Ative para permitir preços especiais para clientes fidelizados"
+    )
 
     def __str__(self):
         return self.username
+
+    def save(self, *args, **kwargs):
+        # Garante que os campos só sejam válidos para lojas
+        if self.user_type != 'store':
+            self.use_bulk_pricing = False
+            self.has_loyalty_card = False
+        super().save(*args, **kwargs)

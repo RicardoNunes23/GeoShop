@@ -19,7 +19,8 @@ import { computed } from 'vue';
 
 // Importe os componentes que serão usados
 import UserProfile from '~/components/admin/UserProfile.vue';
-//import Products from '~/components/admin/Products.vue';
+import AdminProducts from '~/components/admin/AdminProducts.vue';
+import AdminStoreProducts from '~/components/admin/AdminStoreProducts.vue';
 //import Orders from '~/components/admin/Orders.vue';
 //import Settings from '~/components/admin/Settings.vue';
 
@@ -36,7 +37,8 @@ const router = useRouter();
 // Define os componentes disponíveis
 const componentsMap = {
   profile: UserProfile,
-  //products: Products,
+  products: AdminProducts,
+  storeProducts: AdminStoreProducts,
   //orders: Orders,
   //settings: Settings,
 };

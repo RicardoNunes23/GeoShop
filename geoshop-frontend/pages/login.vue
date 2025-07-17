@@ -114,6 +114,11 @@
 <script lang="ts" setup>
 import { useAuthStore } from '~/stores/auth'
 
+definePageMeta({
+  layout: 'auth', // Usa o layout sem sidebar
+ 
+});
+
 const authStore = useAuthStore()
 
 // Estado do login
@@ -125,32 +130,32 @@ const loading = ref(false)
 
 // Função de login adaptada
 const handleLogin = async () => {
-  error.value = ''
-  loading.value = true
-  
+  error.value = '';
+  loading.value = true;
+
   try {
-    await authStore.login(username.value, password.value)
-    
-    // Redirecionamento condicional
-    switch(authStore.user?.user_type) {
+    await authStore.login(username.value, password.value);
+    console.log('Usuário após login:', authStore.user);
+
+    switch (authStore.user?.user_type) {
       case 'client':
-        await navigateTo('/clients')
-        break
+        await navigateTo('/clients');
+        break;
       case 'store':
-        await navigateTo('/store')
-        break
+        await navigateTo('/store?view=profile');
+        break;
       case 'admin':
-        await navigateTo('/admin')
-        break
+        await navigateTo('/admin?view=profile');
+        break;
       default:
-        await navigateTo('/')
+        await navigateTo('/');
     }
   } catch (err: any) {
-    error.value = err.message || 'Erro ao fazer login'
+    error.value = err.message || 'Erro ao fazer login';
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 // Navegação para a página de registro
 const navigateToRegister = () => {

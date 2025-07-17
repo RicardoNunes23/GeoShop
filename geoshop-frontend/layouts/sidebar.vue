@@ -113,14 +113,14 @@ const sidebarItems = computed(() => {
   if (authStore.user?.user_type === 'admin') {
     return [
       { title: 'Usuários', icon: 'mdi-account-group', route: '/admin?view=profile' },
-      { title: 'Produtos', icon: 'mdi-cart', route: '/products' },
+      { title: 'Produtos', icon: 'mdi-cart', route: '/admin?view=products' },
       { title: 'Pedidos', icon: 'mdi-clipboard-list', route: '/orders' },
-      { title: 'Listas', icon: 'mdi-plus', route: '/orders' },
+      { title: 'Listas', icon: 'mdi-plus', route: '/admin?view=storeProducts' },
       { title: 'Configurações', icon: 'mdi-cog', route: '/settings' },
     ];
   } else if (authStore.user?.user_type === 'store') {
     return [
-      { title: 'Dashboard', icon: 'mdi-view-dashboard', route: '/store?view=profile' },
+      { title: 'Meu cadastro', icon: 'mdi-account-outline', route: '/store?view=profile' },
       { title: 'Produtos', icon: 'mdi-cart', route: '/store?view=products' },
       { title: 'Pedidos', icon: 'mdi-clipboard-list', route: '/store?view=orders' },
       { title: 'Listas de Itens', icon: 'mdi-plus', route: '/store?view=orders' },
