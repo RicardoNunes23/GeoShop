@@ -1,3 +1,4 @@
+<!-- pages/StoreProfile.vue -->
 <template>
   <div>
     <h2 class="text-h4 font-weight-bold text-primary mb-6">
@@ -28,6 +29,14 @@
             >
               <v-icon left>mdi-pencil</v-icon>
               Editar
+            </v-btn>
+            <v-btn 
+              color="primary" 
+              class="mr-2"
+              @click="openPlanSelectionModal"
+            >
+              <v-icon left>mdi-card-bulleted</v-icon>
+              Gerenciar Planos
             </v-btn>
             <v-btn 
               color="error" 
@@ -70,6 +79,7 @@
                 <p><strong>Longitude:</strong> {{ profile.longitude }}</p>
                 <p><strong>Trabalha com Qtd. Mínima:</strong> {{ profile.use_bulk_pricing ? 'Sim' : 'Não' }}</p>
                 <p><strong>Tem Cartão Fidelidade:</strong> {{ profile.has_loyalty_card ? 'Sim' : 'Não' }}</p>
+                <p><strong>Plano Ativo:</strong> {{ authStore.activePlan ? authStore.activePlan.description : 'Nenhum plano ativo' }}</p>
               </v-col>
             </v-row>
           </v-card-text>
@@ -195,6 +205,10 @@
       </div>
     </v-dialog>
 
+    <v-dialog v-model="planSelectionModal" max-width="800" persistent>
+      <PlanSelection />
+    </v-dialog>
+
     <v-dialog v-model="confirmDelete" max-width="500" persistent>
       <div class="modal-content">
         <h2 class="text-h5 font-weight-bold text-primary">
@@ -219,6 +233,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 import { useRouter } from 'vue-router';
 import { mask } from 'vue-the-mask';
+import PlanSelection from '~/components/PlanSelection.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -243,11 +258,13 @@ const headers = ref([
   { title: 'Telefone', key: 'phone' },
   { title: 'Trabalha com Qtd. Mínima', key: 'use_bulk_pricing', value: item => item.use_bulk_pricing ? 'Sim' : 'Não' },
   { title: 'Tem Cartão Fidelidade', key: 'has_loyalty_card', value: item => item.has_loyalty_card ? 'Sim' : 'Não' },
+  { title: 'Plano Ativo', key: 'active_plan', value: () => authStore.activePlan ? authStore.activePlan.description : 'Nenhum plano ativo' },
   { title: 'Ações', key: 'actions', sortable: false },
 ]);
 
 const detailsModal = ref(false);
 const editModal = ref(false);
+const planSelectionModal = ref(false);
 const confirmDelete = ref(false);
 const loading = ref(false);
 const deleting = ref(false);
@@ -333,6 +350,11 @@ function openEditModal(item) {
   console.log('openEditModal: Abrindo modal de edição com item:', item);
   editForm.value = { ...item };
   editModal.value = true;
+}
+
+function openPlanSelectionModal() {
+  console.log('openPlanSelectionModal: Abrindo modal de seleção de planos');
+  planSelectionModal.value = true;
 }
 
 function confirmDeleteProfile(item) {

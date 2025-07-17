@@ -114,7 +114,7 @@ const sidebarItems = computed(() => {
     return [
       { title: 'Usuários', icon: 'mdi-account-group', route: '/admin?view=profile' },
       { title: 'Produtos', icon: 'mdi-cart', route: '/admin?view=products' },
-      { title: 'Pedidos', icon: 'mdi-clipboard-list', route: '/orders' },
+      { title: 'Planos', icon: 'mdi-clipboard-list', route: '/admin?view=plans' },
       { title: 'Listas', icon: 'mdi-plus', route: '/admin?view=storeProducts' },
       { title: 'Configurações', icon: 'mdi-cog', route: '/settings' },
     ];

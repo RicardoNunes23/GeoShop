@@ -1,5 +1,14 @@
+// stores/auth.ts
 import { defineStore } from 'pinia';
 import axios from 'axios';
+
+interface Plan {
+  id: number;
+  name: string;
+  price: number;
+  product_limit: number;
+  description: string;
+}
 
 interface User {
   id: number;
@@ -14,6 +23,7 @@ interface User {
   longitude?: number;
   use_bulk_pricing?: boolean;
   has_loyalty_card?: boolean;
+  active_plan?: Plan | null; // Adicionado
 }
 
 interface AuthState {
@@ -38,6 +48,7 @@ export const useAuthStore = defineStore('auth', {
       if (!state.user) return [];
       return this.isAdmin ? state.users : state.users.filter(user => user.id === state.user?.id);
     },
+    activePlan: (state) => state.user?.active_plan || null, // Getter para o plano ativo
   },
 
   actions: {

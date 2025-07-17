@@ -21,6 +21,7 @@ import { computed } from 'vue';
 import UserProfile from '~/components/admin/UserProfile.vue';
 import AdminProducts from '~/components/admin/AdminProducts.vue';
 import AdminStoreProducts from '~/components/admin/AdminStoreProducts.vue';
+import AdminPlans from '~/components/admin/AdminPlans.vue';
 //import Orders from '~/components/admin/Orders.vue';
 //import Settings from '~/components/admin/Settings.vue';
 
@@ -39,6 +40,7 @@ const componentsMap = {
   profile: UserProfile,
   products: AdminProducts,
   storeProducts: AdminStoreProducts,
+  plans: AdminPlans,
   //orders: Orders,
   //settings: Settings,
 };

@@ -1,7 +1,23 @@
+<!-- pages/StoreProduct.vue -->
 <template>
     <v-container>
         <h1>Gerenciamento de Produtos da Loja</h1>
-        <v-btn color="primary" @click="openCreateDialog">Adicionar Produto</v-btn>
+        <v-alert 
+            v-if="authStore.activePlan"
+            type="info"
+            variant="tonal"
+            class="mb-4"
+        >
+            Seu plano atual ({{ authStore.activePlan.description }}) permite até {{ authStore.activePlan.product_limit }} produtos.
+            Você possui {{ storeProductStore.storeProducts.length }} produtos cadastrados.
+        </v-alert>
+        <v-btn 
+            color="primary" 
+            @click="openCreateDialog" 
+            :disabled="!canAddProduct"
+        >
+            Adicionar Produto
+        </v-btn>
         <v-text-field v-model="tableSearch" label="Pesquisar" prepend-inner-icon="mdi-magnify" clearable class="mb-4" />
         <v-data-table :headers="filteredHeaders" :items="storeProductStore.storeProducts" :search="tableSearch"
             :loading="storeProductStore.loading" class="elevation-1 mt-4">
@@ -208,6 +224,12 @@ const imageUrl = computed(() => {
     };
 });
 
+// Verifica se é possível adicionar um novo produto com base no limite do plano
+const canAddProduct = computed(() => {
+  if (!authStore.activePlan) return false;
+  return storeProductStore.storeProducts.length < authStore.activePlan.product_limit;
+});
+
 // Filtra os headers com base nas configurações da loja
 const filteredHeaders = computed(() => {
     return headers.filter(header => {
@@ -285,6 +307,12 @@ function openImageDialog(item: StoreProduct) {
 }
 
 function openCreateDialog() {
+    if (!canAddProduct.value) {
+        snackbarText.value = 'Limite de produtos do plano atingido. Atualize seu plano para adicionar mais produtos.';
+        snackbarColor.value = 'error';
+        snackbar.value = true;
+        return;
+    }
     isEditing.value = false;
     formData.value = {
         id: null,
