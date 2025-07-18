@@ -13,6 +13,11 @@
 </template>
 
 <script setup>
+definePageMeta({
+  middleware: ['auth'],
+  layout: 'sidebar'
+});
+
 import { useAuthStore } from '~/stores/auth';
 import { useRoute, useRouter } from '#app';
 import { computed } from 'vue';
@@ -25,10 +30,6 @@ import AdminPlans from '~/components/admin/AdminPlans.vue';
 //import Orders from '~/components/admin/Orders.vue';
 //import Settings from '~/components/admin/Settings.vue';
 
-definePageMeta({
-  middleware: ['auth'],
-  layout: 'sidebar'
-});
 
 // Estado do layout
 const authStore = useAuthStore();

@@ -304,18 +304,18 @@ const editFormValid = computed(() => {
 });
 
 onMounted(async () => {
-  console.log('onMounted: Iniciando carregamento do componente StoreProfile');
+  
   if (!authStore.isStore) {
-    console.log('onMounted: Usuário não é loja, redirecionando para /');
+    
     router.push('/');
     return;
   }
 
   try {
-    console.log('onMounted: Carregando perfil do usuário');
+    
     loading.value = true;
     await authStore.fetchProfile();
-    console.log('onMounted: Dados brutos do usuário:', authStore.user);
+ 
     if (authStore.user) {
       profile.value = {
         username: authStore.user.username || '',
@@ -328,7 +328,7 @@ onMounted(async () => {
         use_bulk_pricing: authStore.user.use_bulk_pricing || false,
         has_loyalty_card: authStore.user.has_loyalty_card || false,
       };
-      console.log('onMounted: Perfil carregado:', profile.value);
+      
       if (!profile.value.username) {
         console.warn('onMounted: Dados do perfil incompletos');
         error.value = 'Dados do perfil incompletos. Verifique as informações da loja.';
@@ -346,24 +346,24 @@ onMounted(async () => {
 });
 
 function openDetailsModal() {
-  console.log('openDetailsModal: Abrindo modal de detalhes');
+  
   detailsModal.value = true;
 }
 
 function openEditModal(item) {
-  console.log('openEditModal: Abrindo modal de edição com item:', item);
+
   editForm.value = { ...item };
   editModal.value = true;
 }
 
 function confirmDeleteProfile(item) {
-  console.log('confirmDeleteProfile: Abrindo confirmação de exclusão para item:', item);
+ 
   editForm.value = { ...item };
   confirmDelete.value = true;
 }
 
 async function updateProfile() {
-  console.log('updateProfile: Tentando atualizar perfil com dados:', editForm.value);
+  
   try {
     loading.value = true;
     error.value = '';
@@ -381,7 +381,7 @@ async function updateProfile() {
     profile.value = { ...editForm.value };
     editModal.value = false;
     error.value = 'Perfil atualizado com sucesso!';
-    console.log('updateProfile: Perfil atualizado com sucesso');
+    
   } catch (err: any) {
     console.error('updateProfile: Erro ao atualizar perfil:', err);
     error.value = err.message || 'Erro ao atualizar perfil';
@@ -391,14 +391,14 @@ async function updateProfile() {
 }
 
 async function deleteProfile() {
-  console.log('deleteProfile: Tentando excluir perfil');
+ 
   try {
     deleting.value = true;
     error.value = '';
 
     await authStore.deleteProfile();
     await router.push('/');
-    console.log('deleteProfile: Perfil excluído com sucesso');
+  
   } catch (err: any) {
     console.error('deleteProfile: Erro ao excluir perfil:', err);
     error.value = err.message || 'Erro ao excluir conta';

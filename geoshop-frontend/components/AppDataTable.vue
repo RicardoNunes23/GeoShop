@@ -10,7 +10,7 @@
       clearable
       class="mb-4"
       hide-details
-      @input="updateSearch"
+    
     ></v-text-field>
 
     <!-- Indicador de carregamento -->
@@ -54,7 +54,7 @@
       </template>
 
       <!-- Slot para ações -->
-      <template v-slot:item.actions="{ item }">
+      <template #item.actions="{ item }">
         <slot name="actions" :item="item"></slot>
       </template>
     </v-data-table>

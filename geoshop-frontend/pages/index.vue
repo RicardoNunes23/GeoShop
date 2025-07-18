@@ -102,7 +102,7 @@ const handleRegister = async () => {
   loading.value = true
   try {
     // Aqui você implementaria a lógica de registro
-    console.log('Registrando:', register)
+  
     // Simulando um registro bem-sucedido
     await new Promise(resolve => setTimeout(resolve, 1000))
     

@@ -53,7 +53,6 @@ export const useProductStore = defineStore('product', () => {
         },
       });
       products.value = response as Product[];
-      console.log('Produtos buscados do servidor:', products.value); // Log para depuração
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao buscar produtos';
       console.error('Erro ao buscar produtos:', err);
@@ -78,7 +77,6 @@ export const useProductStore = defineStore('product', () => {
         },
         body: productData,
       });
-      console.log('Produto criado:', response); // Log para depuração
       return response as Product;
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao criar produto';
@@ -109,7 +107,6 @@ export const useProductStore = defineStore('product', () => {
       if (index !== -1) {
         products.value[index] = response as Product;
       }
-      console.log('Produto atualizado:', response); // Log para depuração
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao atualizar produto';
       console.error('Erro ao atualizar produto:', err);
@@ -134,7 +131,6 @@ export const useProductStore = defineStore('product', () => {
         },
       });
       products.value = products.value.filter((p) => p.id !== id);
-      console.log('Produto excluído, ID:', id); // Log para depuração
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao excluir produto';
       console.error('Erro ao excluir produto:', err);
@@ -159,7 +155,6 @@ export const useProductStore = defineStore('product', () => {
         },
       });
       storeProducts.value = response as StoreProduct[];
-      console.log('Produtos da loja buscados:', storeProducts.value); // Log para depuração
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao buscar produtos da loja';
       console.error('Erro ao buscar produtos da loja:', err);
@@ -185,7 +180,6 @@ export const useProductStore = defineStore('product', () => {
         body: productData,
       });
       storeProducts.value.push(response as StoreProduct);
-      console.log('Produto da loja criado:', response); // Log para depuração
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao criar produto da loja';
       console.error('Erro ao criar produto da loja:', err);
@@ -214,7 +208,6 @@ export const useProductStore = defineStore('product', () => {
       if (index !== -1) {
         storeProducts.value[index] = response as StoreProduct;
       }
-      console.log('Produto da loja atualizado:', response); // Log para depuração
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao atualizar produto da loja';
       console.error('Erro ao atualizar produto da loja:', err);
@@ -239,7 +232,6 @@ export const useProductStore = defineStore('product', () => {
         },
       });
       storeProducts.value = storeProducts.value.filter((p) => p.id !== id);
-      console.log('Produto da loja excluído, ID:', id); // Log para depuração
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao excluir produto da loja';
       console.error('Erro ao excluir produto da loja:', err);

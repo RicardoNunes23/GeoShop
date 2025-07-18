@@ -112,13 +112,11 @@
 </template>
 
 <script setup lang="ts">
+
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useProductStore } from '~/stores/products';
 import AppDataTable from '~/components/AppDataTable.vue';
 
-definePageMeta({
-  middleware: ['auth'],
-});
 
 const productStore = useProductStore();
 const dialog = ref(false);

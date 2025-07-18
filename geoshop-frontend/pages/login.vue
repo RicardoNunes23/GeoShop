@@ -135,7 +135,7 @@ const handleLogin = async () => {
 
   try {
     await authStore.login(username.value, password.value);
-    console.log('Usuário após login:', authStore.user);
+   
 
     switch (authStore.user?.user_type) {
       case 'client':

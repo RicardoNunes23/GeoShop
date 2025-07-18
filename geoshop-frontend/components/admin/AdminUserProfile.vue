@@ -229,7 +229,7 @@
 import { useAuthStore } from '~/stores/auth';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from '#app';
-import { mask } from 'vue-the-mask';
+import { mask } from 'vue-the-mask'; 
 import { debounce } from 'lodash-es';
 import AppDataTable from '~/components/AppDataTable.vue';
 import { usePlanStore } from '~/stores/plans'; // Importar o store de planos
@@ -238,6 +238,7 @@ const authStore = useAuthStore();
 const router = useRouter();
 
 // Variáveis reativas
+const vMask = mask;
 const activeTab = ref('admin');
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -438,10 +439,10 @@ const submitForm = async () => {
         delete formData.longitude;
       }
 
-      console.log('Dados sendo enviados:', formData);
+     
 
       const response = await authStore.updateUser(formData);
-      console.log('Resposta da API:', response);
+     
 
       if (authStore.user?.id === formData.id) {
         await authStore.fetchUser();
@@ -477,10 +478,6 @@ const deleteUser = async () => {
   }
 };
 
-// Configuração da página
-definePageMeta({
-  middleware: ['auth'],
-});
 
 // Carrega dados ao montar o componente
 onMounted(async () => {

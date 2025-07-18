@@ -11,7 +11,7 @@ export default defineNuxtConfig({
     '@mdi/font/css/materialdesignicons.min.css',
     'leaflet/dist/leaflet.css',
   ],
-  plugins: ['~/plugins/vuetify.ts'],
+  plugins: ['~/plugins/vuetify.ts', '~/plugins/mask.ts'],
   build: {
     transpile: ['vuetify', 'vue3-leaflet', 'leaflet'],
   },
