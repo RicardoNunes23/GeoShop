@@ -1,4 +1,3 @@
-<!-- pages/store-products.vue -->
 <template>
   <v-container>
     <h1 class="text-h4 mb-6">
@@ -7,8 +6,7 @@
     </h1>
 
     <!-- Seletor de Loja -->
-    <v-card class="mb-6">
-      <v-card-title>
+   
         <v-select
           v-model="selectedStore"
           :items="stores"
@@ -21,7 +19,54 @@
           :disabled="loadingStores"
           @update:modelValue="loadStoreProducts"
         ></v-select>
+  
+
+    <!-- Exibir dados da loja selecionada -->
+    <v-card v-if="selectedStore && selectedStoreData" class="mb-6" elevation="2">
+      <v-card-title class="text-h6">
+        <v-icon left color="primary">mdi-information-outline</v-icon>
+        Dados da Loja
       </v-card-title>
+      <v-card-text>
+        <v-row>
+          <v-col cols="12" sm="6">
+            <v-list-item>
+              <v-list-item-title>
+                <strong>Nome:</strong> {{ selectedStoreData.username }}
+              </v-list-item-title>
+            </v-list-item>
+          </v-col>
+          <v-col cols="12" sm="6">
+            <v-list-item>
+              <v-list-item-title>
+                <strong>Plano:</strong> {{ selectedStoreData.active_plan?.name || 'N/A' }}
+              </v-list-item-title>
+            </v-list-item>
+          </v-col>
+          <v-col cols="12" sm="6">
+            <v-list-item>
+              <v-list-item-title>
+                <strong>Limite de Produtos:</strong> {{ selectedStoreData.active_plan?.product_limit || 'N/A' }}
+              </v-list-item-title>
+            </v-list-item>
+          </v-col>
+          <v-col cols="12" sm="6">
+            <v-list-item>
+              <v-list-item-title>
+                <strong>Status:</strong>
+                <v-chip
+                  :color="selectedStoreData.active_plan?.ativo ? 'success' : 'error'"
+                  :prepend-icon="selectedStoreData.active_plan?.ativo ? 'mdi-check-circle' : 'mdi-close-circle'"
+                  size="small"
+                  class="ml-2"
+                >
+                  {{ selectedStoreData.active_plan?.ativo ? 'Ativo' : 'Inativo' }}
+                </v-chip>
+              </v-list-item-title>
+            </v-list-item>
+          </v-col>
+        </v-row>
+      </v-card-text>
     </v-card>
 
     <!-- Mensagem para nenhuma loja selecionada -->
@@ -37,13 +82,16 @@
     <AppDataTable
       v-if="selectedStore && storeProducts.length > 0"
       :headers="productHeaders"
-      :items="storeProducts"
+      :items="filteredProducts"
       :loading="loadingProducts"
-      :search="tableSearch"
+      :search="searchQuery"
+      :items-per-page="itemsPerPage"
+      v-model:page="page"
       :show-item-count="true"
-      :custom-filter="customFilter"
-      :items-per-page="-1"
       searchable
+      @update:page="handlePageChange"
+      @update:items-per-page="handleItemsPerPageChange"
+      @update:search="searchQuery = $event"
     >
       <template v-slot:item.image="{ item }">
         <v-img
@@ -52,6 +100,9 @@
           max-height="50"
           contain
         ></v-img>
+      </template>
+      <template v-slot:item.product.name="{ item }">
+        {{ item.product.name }} - {{ formatQuantity(item.product.quantity, item.product.weight_unit) }}
       </template>
       <template v-slot:item.price="{ item }">
         {{ formatPrice(item.price) }}
@@ -63,18 +114,21 @@
         {{ formatPrice(item.loyalty_price) }}
       </template>
       <template v-slot:item.bulk_min_quantity="{ item }">
-        {{ formatQuantity(item.bulk_min_quantity) }}
+        {{ formatQuantity(item.bulk_min_quantity, '') }}
       </template>
       <template v-slot:item.is_active="{ item }">
         <v-chip :color="item.is_active ? 'success' : 'error'" small>
           {{ item.is_active ? 'Ativo' : 'Inativo' }}
         </v-chip>
       </template>
-    </AppDataTable>
+    </AppDataTable>  
 
     <!-- Snackbar para mensagens -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000">
       {{ snackbar.message }}
+      <template v-slot:action="{ attrs }">
+        <v-btn text v-bind="attrs" @click="snackbar.show = false">Fechar</v-btn>
+      </template>
     </v-snackbar>
   </v-container>
 </template>
@@ -94,14 +148,20 @@ const selectedStore = ref(null);
 const storeProducts = ref([]);
 const loadingStores = ref(false);
 const loadingProducts = ref(false);
-const tableSearch = ref('');
-const visibleItemsCount = ref(0);
+const searchQuery = ref('');
+const page = ref(1);
+const itemsPerPage = ref(10);
 
 // Snackbar
 const snackbar = ref({
   show: false,
   color: 'success',
   message: '',
+});
+
+// Propriedade computada para obter dados da loja selecionada
+const selectedStoreData = computed(() => {
+  return stores.value.find(store => store.id === selectedStore.value) || null;
 });
 
 // Cabeçalhos da tabela
@@ -126,12 +186,39 @@ const productHeaders = computed(() => {
   return headers;
 });
 
-// Filtro personalizado
-const customFilter = (value, query, item) => {
-  if (!query) return true;
-  const normalizedQuery = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const productName = item.raw.product?.name?.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || '';
-  return productName.includes(normalizedQuery);
+// Produtos filtrados
+const filteredProducts = computed(() => {
+  if (!searchQuery.value) return storeProducts.value;
+  
+  return storeProducts.value.filter(product => {
+    const query = searchQuery.value.toLowerCase();
+    const name = product.product?.name?.toLowerCase() || '';
+    const quantityStr = product.product?.quantity ? 
+      `${product.product.quantity}${product.product.weight_unit || ''}`.toLowerCase() : '';
+    
+    return (
+      name.includes(query) ||
+      quantityStr.includes(query)
+    );
+  });
+});
+
+// Calcula total de páginas
+const totalPages = computed(() => {
+  if (itemsPerPage.value === -1) {
+    return 1;
+  }
+  return Math.ceil(filteredProducts.value.length / itemsPerPage.value);
+});
+
+// Manipuladores de paginação
+const handlePageChange = (newPage) => {
+  page.value = newPage;
+};
+
+const handleItemsPerPageChange = (newItemsPerPage) => {
+  itemsPerPage.value = newItemsPerPage;
+  page.value = 1;
 };
 
 // Carrega lojas
@@ -158,8 +245,8 @@ const loadStores = async () => {
 const loadStoreProducts = async (storeId) => {
   if (!storeId) {
     storeProducts.value = [];
-    tableSearch.value = '';
-    visibleItemsCount.value = 0;
+    searchQuery.value = '';
+    page.value = 1;
     return;
   }
 
@@ -182,11 +269,13 @@ const loadStoreProducts = async (storeId) => {
       bulk_min_quantity: product.bulk_min_quantity ? Number(product.bulk_min_quantity) : null,
       store: product.store || null,
     })) : [];
+    
+    // Resetar paginação ao carregar novos produtos
+    page.value = 1;
   } catch (error) {
     showSnackbar('Erro ao carregar produtos da loja', 'error');
     console.error('Erro ao carregar produtos:', error);
     storeProducts.value = [];
-    visibleItemsCount.value = 0;
   } finally {
     loadingProducts.value = false;
   }
@@ -204,10 +293,14 @@ const formatPrice = (price) => {
   return `R$ ${Number(price).toFixed(2).replace('.', ',')}`;
 };
 
-const formatQuantity = (quantity) => {
+function formatQuantity(quantity, unit) {
   if (quantity === null || quantity === undefined) return '-';
-  return quantity.toString();
-};
+  
+  const numericQuantity = Number(quantity);
+  const formattedValue = Math.floor(numericQuantity).toString();
+  const formattedUnit = unit && unit.toLowerCase() === 'l' ? 'L' : (unit || '').toLowerCase();
+  return formattedUnit ? `${formattedValue}${formattedUnit}` : formattedValue;
+}
 
 const showSnackbar = (message, color) => {
   snackbar.value = {
@@ -232,5 +325,22 @@ onMounted(async () => {
 .v-data-table {
   border-radius: 0;
   border: none;
+}
+
+.v-pagination {
+  justify-content: center;
+}
+
+.v-card {
+  border-radius: 8px;
+}
+
+.v-list-item-title {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.v-chip {
+  font-weight: 500;
 }
 </style>

@@ -36,7 +36,7 @@
             :loading="loading"
             :search="searchQuery"
             :items-per-page="itemsPerPage"
-            :page.sync="page"
+            v-model:page="page"
             searchable
             @update:page="handlePageChange"
             @update:items-per-page="handleItemsPerPageChange"

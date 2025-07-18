@@ -43,7 +43,7 @@
           {{ item.ativo ? 'Ativo' : 'Inativo' }}
         </v-chip>
       </template>
-      <template v-if="authStore.isAdmin" v-slot:actions="{ item }">
+      <template v-if="authStore.isAdmin" v-slot:item.actions="{ item }"> 
         <v-tooltip bottom>
           <template v-slot:activator="{ on, attrs }">
             <v-btn
@@ -204,12 +204,11 @@ const formData = ref({
 });
 
 const headers = [
-  { title: 'ID', key: 'id', width: '80px' },
-  { title: 'Nome', key: 'name' },
-  { title: 'Preço', key: 'price', align: 'end' },
-  { title: 'Limite', key: 'product_limit', align: 'end' },
-  { title: 'Status', key: 'ativo', align: 'center' },
-  { title: 'Ações', key: 'actions', sortable: false, align: 'center', width: '120px' },
+  { title: 'Nome', key: 'name', sortable: true },
+  { title: 'Preço', key: 'price', sortable: true },
+  { title: 'Quantidade de itens', key: 'product_limit', sortable: true  },
+  { title: 'Status', key: 'ativo', sortable: true  },
+  { title: '', key: 'actions', sortable: false, align: 'center' },
 ];
 
 const filteredHeaders = computed(() => {

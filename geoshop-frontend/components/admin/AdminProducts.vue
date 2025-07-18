@@ -9,9 +9,17 @@
       </v-btn>
     </div>
 
-    <AppDataTable :headers="headers" :items="paginatedProducts" :loading="productStore.loading"
-      :items-per-page="itemsPerPage" :page.sync="page" :show-select="true" v-model:selected="selectedItems" searchable
-      @update:page="handlePageChange" @update:items-per-page="handleItemsPerPageChange"
+    <AppDataTable 
+      :headers="headers" 
+      :items="paginatedProducts" 
+      :loading="productStore.loading"
+      :items-per-page="itemsPerPage" 
+      v-model:page="page"
+      :show-select="true" 
+      v-model:selected="selectedItems" 
+      searchable
+      @update:page="handlePageChange" 
+      @update:items-per-page="handleItemsPerPageChange"
       @update:search="search = $event">
       <template v-slot:item.image="{ item }">
         <v-img :src="imageUrl(item.image)" max-width="50" max-height="50" @error="onImageError(item)"
@@ -68,7 +76,7 @@
               <p><strong>Produto/ Marca:</strong> {{ selectedProduct.name }}</p>
               <p><strong>Tipo de Embalagem:</strong> {{ formatPackageType(selectedProduct.package_type) }}</p>
               <p><strong>Quantidade:</strong> {{ formatQuantity(selectedProduct.quantity, selectedProduct.weight_unit)
-              }}
+                }}
               </p>
               <p><strong>Descrição:</strong> {{ selectedProduct.description || 'Sem descrição' }}</p>
             </v-col>

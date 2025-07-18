@@ -1,6 +1,11 @@
 <!-- AppDataTable.vue -->
 <template>
   <v-container fluid class="pa-0">
+    <!-- Contagem de itens visíveis -->
+    <v-chip v-if="showItemCount && items.length > 0" color="primary" class="mt-4">
+      Itens: {{ visibleItemsCount }}
+    </v-chip>
+    
     <!-- Pesquisa -->
     <v-text-field
       v-if="searchable"
@@ -29,6 +34,7 @@
     >
       Nenhum item encontrado.
     </v-alert>
+    
 
     <!-- Tabela -->
     <v-data-table
@@ -59,10 +65,7 @@
       </template>
     </v-data-table>
 
-    <!-- Contagem de itens visíveis -->
-    <v-chip v-if="showItemCount && items.length > 0" color="primary" class="mt-4">
-      Itens: {{ visibleItemsCount }}
-    </v-chip>
+    
   </v-container>
 </template>
 
