@@ -34,7 +34,6 @@ export const usePlanStore = defineStore('plans', () => {
       if (!authStore.token) {
         throw new Error('Token de autenticação não encontrado');
       }
-      console.log('Token usado na requisição:', authStore.token);
       const response = await $fetch(`${apiBase}/plans/`, {
         method: 'GET',
         headers: {
@@ -46,13 +45,11 @@ export const usePlanStore = defineStore('plans', () => {
         price: parseFloat(plan.price as any),
         product_limit: parseInt(plan.product_limit as any, 10),
       }));
-      console.log('Planos após conversão:', plans.value);
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao buscar planos';
       console.error('Erro ao buscar planos:', err);
     } finally {
       loading.value = false;
-      console.log('Estado de loading após fetchPlans:', loading.value);
     }
   }
 
@@ -128,7 +125,6 @@ export const usePlanStore = defineStore('plans', () => {
         price: parseFloat(response.price as any),
         product_limit: parseInt(response.product_limit as any, 10),
       });
-      console.log('Plano criado:', response);
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao salvar plano';
       console.error('Erro ao salvar plano:', err);
@@ -165,7 +161,6 @@ export const usePlanStore = defineStore('plans', () => {
       if (index !== -1) {
         plans.value[index] = updatedPlan;
       }
-      console.log('Plano atualizado:', response);
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao atualizar plano';
       console.error('Erro ao atualizar plano:', err);
@@ -192,7 +187,6 @@ export const usePlanStore = defineStore('plans', () => {
         },
       });
       plans.value = plans.value.filter(plan => plan.id !== planId);
-      console.log('Plano excluído:', planId);
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao excluir plano';
       console.error('Erro ao excluir plano:', err);

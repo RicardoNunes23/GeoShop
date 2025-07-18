@@ -1,42 +1,35 @@
-<!-- pages/products.vue -->
+<!-- AdminProducts.vue -->
 <template>
   <v-container>
     <h1>Gerenciamento de Produtos</h1>
     <div class="d-flex align-center mb-4">
       <v-btn color="primary" @click="openCreateDialog">Adicionar Produto</v-btn>
-      <v-btn
-        v-if="selectedItems.length > 0"
-        color="error"
-        class="ml-2"
-        @click="confirmDeleteSelected"
-      >
+      <v-btn v-if="selectedItems.length > 0" color="error" class="ml-2" @click="confirmDeleteSelected">
         Excluir Selecionados ({{ selectedItems.length }})
       </v-btn>
     </div>
 
-    <AppDataTable
-      :headers="headers"
-      :items="filteredProducts"
-      :loading="productStore.loading"
-      :show-select="true"
-      v-model:selected="selectedItems"
-      searchable
-    >
+    <AppDataTable :headers="headers" :items="paginatedProducts" :loading="productStore.loading"
+      :items-per-page="itemsPerPage" :page.sync="page" :show-select="true" v-model:selected="selectedItems" searchable
+      @update:page="handlePageChange" @update:items-per-page="handleItemsPerPageChange"
+      @update:search="search = $event">
       <template v-slot:item.image="{ item }">
-        <v-img
-          :src="imageUrl(item.image)"
-          max-width="50"
-          max-height="50"
-          @error="onImageError(item)"
-          @click="openImageDialog(item)"
-          style="cursor: pointer;"
-        ></v-img>
+        <v-img :src="imageUrl(item.image)" max-width="50" max-height="50" @error="onImageError(item)"
+          @click="openImageDialog(item)" style="cursor: pointer;"></v-img>
       </template>
-      <template v-slot:actions="{ item }">
+      <template v-slot:item.quantity="{ item }">
+        {{ formatQuantity(item.quantity, item.weight_unit) }}
+      </template>
+      <template v-slot:item.package_type="{ item }">
+        {{ formatPackageType(item.package_type) }}
+      </template>
+      <template v-slot:item.actions="{ item }">
         <v-btn color="warning" small @click="openEditDialog(item)">Editar</v-btn>
         <v-btn color="error" small @click="confirmDelete(item.id)">Excluir</v-btn>
       </template>
     </AppDataTable>
+
+    <v-pagination v-model="page" :length="totalPages" :total-visible="7" class="mt-4"></v-pagination>
 
     <!-- Diálogo para adicionar/editar produto -->
     <v-dialog v-model="dialog" max-width="600px">
@@ -46,38 +39,14 @@
         </v-card-title>
         <v-card-text>
           <v-form v-model="valid" ref="form">
-            <v-text-field
-              v-model="formData.name"
-              label="Produto/ Marca"
-              :rules="[v => !!v || 'Nome é obrigatório']"
-              required
-            ></v-text-field>
-            <v-select
-              v-model="formData.package_type"
-              :items="packageTypes"
-              item-value="value"
-              item-title="text"
-              label="Tipo de Embalagem"
-              :rules="[v => !!v || 'Tipo de embalagem é obrigatório']"
-              required
-            ></v-select>
-            <v-text-field
-              v-model="combinedQuantity"
-              label="Quantidade (ex: 5kg, 100g, 1L, 2un)"
-              :rules="[validateCombinedQuantity]"
-              required
-              @blur="parseCombinedQuantity"
-            ></v-text-field>
-            <v-textarea
-              v-model="formData.description"
-              label="Descrição"
-              rows="3"
-            ></v-textarea>
-            <v-file-input
-              v-model="formData.image"
-              label="Imagem do Produto"
-              accept="image/*"
-            ></v-file-input>
+            <v-text-field v-model="formData.name" label="Produto/ Marca" :rules="[v => !!v || 'Nome é obrigatório']"
+              required></v-text-field>
+            <v-select v-model="formData.package_type" :items="packageTypes" item-value="value" item-title="text"
+              label="Tipo de Embalagem" :rules="[v => !!v || 'Tipo de embalagem é obrigatório']" required></v-select>
+            <v-text-field v-model="combinedQuantity" label="Quantidade (ex: 5kg, 100g, 1L, 2un)"
+              :rules="[validateCombinedQuantity]" required @blur="parseCombinedQuantity"></v-text-field>
+            <v-textarea v-model="formData.description" label="Descrição" rows="3"></v-textarea>
+            <v-file-input v-model="formData.image" label="Imagem do Produto" accept="image/*"></v-file-input>
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -93,17 +62,14 @@
       <v-card>
         <v-card-title>Detalhes do Produto</v-card-title>
         <v-card-text>
-          <v-img
-            :src="imageUrl(selectedProduct.image)"
-            max-height="300"
-            contain
-            class="mb-4"
-          ></v-img>
+          <v-img :src="imageUrl(selectedProduct.image)" max-height="300" contain class="mb-4"></v-img>
           <v-row>
             <v-col cols="12">
               <p><strong>Produto/ Marca:</strong> {{ selectedProduct.name }}</p>
-              <p><strong>Tipo de Embalagem:</strong> {{ selectedProduct.package_type }}</p>
-              <p><strong>Quantidade:</strong> {{ formatQuantity(selectedProduct.quantity, selectedProduct.weight_unit) }}</p>
+              <p><strong>Tipo de Embalagem:</strong> {{ formatPackageType(selectedProduct.package_type) }}</p>
+              <p><strong>Quantidade:</strong> {{ formatQuantity(selectedProduct.quantity, selectedProduct.weight_unit)
+              }}
+              </p>
               <p><strong>Descrição:</strong> {{ selectedProduct.description || 'Sem descrição' }}</p>
             </v-col>
           </v-row>
@@ -120,9 +86,12 @@
       <v-card>
         <v-card-title>Confirmar Exclusão</v-card-title>
         <v-card-text>
-          {{ selectedItems.length > 0 ? 
-            `Deseja realmente excluir ${selectedItems.length} produtos selecionados?` : 
-            'Deseja realmente excluir este produto?' 
+          {{ selectedItems.length > 1 ?
+            `Deseja realmente excluir ${selectedItems.length} produtos selecionados?` :
+            selectedItems.length === 1 ?
+              `Deseja realmente excluir o produto "${getProductName(selectedItems[0])}"?` :
+              deleteId ? `Deseja realmente excluir o produto "${getProductName(deleteId)}"?` :
+                'Deseja realmente excluir este produto?'
           }}
         </v-card-text>
         <v-card-actions>
@@ -143,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { useProductStore } from '~/stores/products';
 import AppDataTable from '~/components/AppDataTable.vue';
 
@@ -165,6 +134,8 @@ const selectedProduct = ref<any>({});
 const search = ref('');
 const selectedItems = ref<number[]>([]);
 const combinedQuantity = ref('');
+const page = ref(1);
+const itemsPerPage = ref(10); // Valor padrão corrigido
 
 const baseUrl = ref('http://localhost:8000');
 
@@ -210,47 +181,82 @@ const unitOptions = [
 const headers = [
   { title: 'Imagem', key: 'image', sortable: false },
   { title: 'Produto/ Marca', key: 'name' },
-  {
-    title: 'Tipo de Embalagem',
-    key: 'package_type',
-    value: (item) => item.package_type ? item.package_type.charAt(0).toUpperCase() + item.package_type.slice(1) : '',
-  },
-  {
-    title: 'Quantidade',
-    key: 'quantity',
-    value: (item) => formatQuantity(item.quantity, item.weight_unit),
-  },
+  { title: 'Tipo de Embalagem', key: 'package_type' },
+  { title: 'Quantidade', key: 'quantity' },
   { title: 'Ações', key: 'actions', sortable: false },
 ];
 
-const filteredProducts = computed(() => {
-  if (!search.value) return productStore.products;
+// Função para formatar Tipo de Embalagem
+function formatPackageType(packageType: string) {
+  return packageType ? packageType.charAt(0).toUpperCase() + packageType.slice(1).toLowerCase() : '';
+}
 
-  const searchTerm = search.value.toLowerCase();
-  return productStore.products.filter(product => {
-    const quantityStr = product.quantity ? `${product.quantity}${product.weight_unit}`.toLowerCase() : '';
-    return (
-      (product.name?.toLowerCase().includes(searchTerm)) ||
-      (product.package_type?.toLowerCase().includes(searchTerm)) ||
-      (product.description?.toLowerCase().includes(searchTerm)) ||
-      (quantityStr.includes(searchTerm))
-    );
-  });
+// Função para formatar Quantidade
+function formatQuantity(quantity: number | string, unit: string) {
+  const numericQuantity = Number(quantity);
+  const formattedValue = Math.floor(numericQuantity).toString(); // Converte para inteiro
+  const formattedUnit = unit && unit.toLowerCase() === 'l' ? 'L' : (unit || '').toLowerCase();
+  return formattedUnit ? `${formattedValue}${formattedUnit}` : formattedValue;
+}
+
+function getProductName(id: number) {
+  const product = productStore.products.find(p => p.id === id);
+  return product ? product.name : 'Produto desconhecido';
+}
+
+// Produtos filtrados
+const filteredProducts = computed(() => {
+  const result = search.value
+    ? productStore.products.filter(product => {
+      const searchTerm = search.value.toLowerCase();
+      const quantityStr = product.quantity ? `${product.quantity}${product.weight_unit || ''}`.toLowerCase() : '';
+      return (
+        (product.name?.toLowerCase().includes(searchTerm)) ||
+        (product.package_type?.toLowerCase().includes(searchTerm)) ||
+        (product.description?.toLowerCase().includes(searchTerm)) ||
+        (quantityStr.includes(searchTerm))
+      );
+    })
+    : productStore.products;
+  return result;
 });
+
+// Produtos paginados
+const paginatedProducts = computed(() => {
+  if (itemsPerPage.value === -1) {
+    return filteredProducts.value;
+  }
+  const validItemsPerPage = Math.max(1, itemsPerPage.value);
+  const start = (page.value - 1) * validItemsPerPage;
+  const end = start + validItemsPerPage;
+  const paginated = filteredProducts.value.slice(start, end);
+  return paginated;
+});
+
+// Calcula total de páginas
+const totalPages = computed(() => {
+  if (itemsPerPage.value === -1) {
+    return 1;
+  }
+  const validItemsPerPage = Math.max(1, itemsPerPage.value);
+  const total = Math.ceil(filteredProducts.value.length / validItemsPerPage);
+  return total;
+});
+
+// Manipuladores de paginação
+const handlePageChange = (newPage: number) => {
+  page.value = newPage;
+};
+
+const handleItemsPerPageChange = (newItemsPerPage: number) => {
+  itemsPerPage.value = newItemsPerPage;
+  page.value = 1;
+};
 
 onMounted(() => {
   productStore.fetchProducts().then(() => {
-    console.log('Produtos carregados:', productStore.products);
   });
 });
-
-function formatQuantity(quantity: number, unit: string) {
-  const formattedValue = Number.isInteger(quantity) 
-    ? quantity.toString() 
-    : parseFloat(quantity.toString()).toString();
-  const formattedUnit = unit.toLowerCase() === 'l' ? 'L' : unit.toLowerCase();
-  return `${formattedValue}${formattedUnit}`;
-}
 
 function onImageError(item: any) {
   console.error(`Erro ao carregar imagem para o produto ${item.name}: ${item.image}`);
@@ -282,12 +288,12 @@ function openEditDialog(item: any) {
     id: item.id,
     name: item.name || '',
     package_type: typeof item.package_type === 'string' ? item.package_type : '',
-    quantity: item.quantity || 0,
+    quantity: Number(item.quantity) || 0,
     weight_unit: typeof item.weight_unit === 'string' ? item.weight_unit : '',
     description: item.description || '',
     image: null,
   };
-  combinedQuantity.value = `${item.quantity}${item.weight_unit}`;
+  combinedQuantity.value = `${Math.floor(Number(item.quantity))}${item.weight_unit || ''}`;
   dialog.value = true;
 }
 
@@ -323,7 +329,7 @@ function parseCombinedQuantity() {
   if (matchedUnit) {
     const numericValue = parseCombinedValue(combinedQuantity.value);
     if (!isNaN(numericValue)) {
-      formData.value.quantity = numericValue;
+      formData.value.quantity = Math.floor(numericValue);
       formData.value.weight_unit = matchedUnit.value;
     }
   }
@@ -347,7 +353,10 @@ async function saveProduct() {
       snackbarText.value = 'Produto atualizado com sucesso!';
       snackbarColor.value = 'success';
     } else {
-      await productStore.createProduct(data);
+      const newProduct = await productStore.createProduct(data);
+      productStore.products.unshift(newProduct); // Adiciona ao início
+      page.value = 1; // Redefine para a primeira página
+      await nextTick(); // Força re-renderização
       snackbarText.value = 'Produto criado com sucesso!';
       snackbarColor.value = 'success';
     }
