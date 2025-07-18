@@ -201,10 +201,13 @@
 
 <script lang="ts" setup>
 import { useAuthStore } from '~/stores/auth';
+import { usePlanStore } from '~/stores/plans';
 import { useRouter } from 'vue-router';
 import { mask } from 'vue-the-mask';
+import { onMounted } from 'vue';
 
 const authStore = useAuthStore();
+const planStore = usePlanStore();
 const router = useRouter();
 
 const activeTab = ref<'client' | 'store'>('client');
@@ -228,7 +231,22 @@ const store = reactive({
   latitude: 0,
   longitude: 0,
   use_bulk_pricing: false,
-  has_loyalty_card: false
+  has_loyalty_card: false,
+  plan_id: 1 // Valor padrão para o plano gratuito (ajuste conforme o ID do backend)
+});
+
+onMounted(async () => {
+  try {
+    await planStore.fetchPlans();
+    const freePlan = planStore.plans.find(plan => plan.price === 0);
+    if (freePlan) {
+      store.plan_id = freePlan.id;
+    } else {
+      console.warn('Plano gratuito não encontrado, usando ID padrão');
+    }
+  } catch (err) {
+    console.error('Erro ao buscar planos:', err);
+  }
 });
 
 async function registerClient() {
@@ -260,7 +278,8 @@ async function registerStore() {
       latitude: Number(store.latitude),
       longitude: Number(store.longitude),
       use_bulk_pricing: store.use_bulk_pricing,
-      has_loyalty_card: store.has_loyalty_card
+      has_loyalty_card: store.has_loyalty_card,
+      plan_id: store.plan_id
     };
     
     await authStore.registerStore(storeData);

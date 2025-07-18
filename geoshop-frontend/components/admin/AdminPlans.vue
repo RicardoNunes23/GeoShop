@@ -1,3 +1,4 @@
+<!-- pages/plans.vue -->
 <template>
   <v-container fluid class="pa-6">
     <v-row>
@@ -6,14 +7,13 @@
       </v-col>
     </v-row>
 
-    <v-row v-if="planStore.loading">
-      <v-col class="text-center">
-        <v-progress-circular indeterminate color="primary" />
-        <span class="ml-2">Carregando...</span>
-      </v-col>
-    </v-row>
-
-    <v-alert v-if="planStore.error" type="error" class="mb-4" dismissible @input="planStore.error = null">
+    <v-alert
+      v-if="planStore.error"
+      type="error"
+      class="mb-4"
+      dismissible
+      @input="planStore.error = null"
+    >
       {{ planStore.error }}
     </v-alert>
 
@@ -28,60 +28,53 @@
     </v-row>
 
     <!-- Tabela de planos -->
-    <v-row>
-      <v-col>
-        <v-data-table
-          :headers="filteredHeaders"
-          :items="planStore.plans"
-          class="elevation-1"
-          :items-per-page="10"
-        >
-          <template v-slot:item.price="{ item }">
-            R$ {{ item.price.toFixed(2) }}
+    <AppDataTable
+      :headers="filteredHeaders"
+      :items="planStore.plans"
+      :loading="planStore.loading"
+      :items-per-page="10"
+      :hide-actions="!authStore.isAdmin"
+    >
+      <template v-slot:item.price="{ item }">
+        R$ {{ item.price.toFixed(2) }}
+      </template>
+      <template v-slot:item.ativo="{ item }">
+        <v-chip :color="item.ativo ? 'success' : 'error'" small>
+          {{ item.ativo ? 'Ativo' : 'Inativo' }}
+        </v-chip>
+      </template>
+      <template v-if="authStore.isAdmin" v-slot:actions="{ item }">
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on, attrs }">
+            <v-btn
+              color="primary"
+              small
+              class="mr-2"
+              @click="startEditing(item)"
+              v-bind="attrs"
+              v-on="on"
+            >
+              <v-icon small>mdi-pencil</v-icon>
+            </v-btn>
           </template>
-          
-          <template v-slot:item.ativo="{ item }">
-            <v-chip :color="item.ativo ? 'success' : 'error'" small>
-              {{ item.ativo ? 'Ativo' : 'Inativo' }}
-            </v-chip>
+          <span>Editar</span>
+        </v-tooltip>
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on, attrs }">
+            <v-btn
+              color="error"
+              small
+              @click="confirmDelete(item)"
+              v-bind="attrs"
+              v-on="on"
+            >
+              <v-icon small>mdi-delete</v-icon>
+            </v-btn>
           </template>
-          
-          <!-- Ações visíveis apenas para admin -->
-          <template v-if="authStore.isAdmin" v-slot:item.actions="{ item }">
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-btn 
-                  color="primary" 
-                  small 
-                  class="mr-2" 
-                  @click="startEditing(item)"
-                  v-bind="attrs"
-                  v-on="on"
-                >
-                  <v-icon small>mdi-pencil</v-icon>
-                </v-btn>
-              </template>
-              <span>Editar</span>
-            </v-tooltip>
-            
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-btn 
-                  color="error" 
-                  small 
-                  @click="confirmDelete(item)"
-                  v-bind="attrs"
-                  v-on="on"
-                >
-                  <v-icon small>mdi-delete</v-icon>
-                </v-btn>
-              </template>
-              <span>Excluir</span>
-            </v-tooltip>
-          </template>
-        </v-data-table>
-      </v-col>
-    </v-row>
+          <span>Excluir</span>
+        </v-tooltip>
+      </template>
+    </AppDataTable>
 
     <!-- Diálogo de criação/edição -->
     <v-dialog v-model="dialog" max-width="600px" persistent>
@@ -106,38 +99,32 @@
               outlined
               class="mb-4"
             />
-            
-           <v-text-field
-  v-model="formData.price"
-  label="Preço (R$)"
-  type="number"
-  step="0.01"
-  min="0"
-  :rules="[
-    v => (v !== null && v !== '' && v !== undefined) || 'Preço é obrigatório',
-    v => Number(v) >= 0 || 'Preço não pode ser negativo',
-    v => /^\d+(\.\d{1,2})?$/.test(v) || 'Formato inválido (use 00.00)'
-  ]"
-  required
-  outlined
-  class="mb-4"
-  @blur="formatPrice"
-/>
-            
+            <v-text-field
+              v-model="formData.price"
+              label="Preço (R$)"
+              type="number"
+              step="0.01"
+              min="0"
+              :rules="[
+                v => (v !== null && v !== '' && v !== undefined) || 'Preço é obrigatório',
+                v => Number(v) >= 0 || 'Preço não pode ser negativo',
+                v => /^\d+(\.\d{1,2})?$/.test(v) || 'Formato inválido (use 00.00)'
+              ]"
+              required
+              outlined
+              class="mb-4"
+              @blur="formatPrice"
+            />
             <v-text-field
               v-model.number="formData.product_limit"
               label="Limite de Produtos"
               type="number"
               min="0"
-              :rules="[
-                v => !!v || 'Limite é obrigatório',
-                v => v >= 0 || 'Limite deve ser positivo'
-              ]"
+              :rules="[v => !!v || 'Limite é obrigatório', v => v >= 0 || 'Limite deve ser positivo']"
               required
               outlined
               class="mb-4"
             />
-            
             <v-textarea
               v-model="formData.description"
               label="Descrição"
@@ -151,9 +138,9 @@
         <v-card-actions>
           <v-spacer />
           <v-btn color="grey" text @click="cancel">Cancelar</v-btn>
-          <v-btn 
-            color="primary" 
-            :loading="planStore.loading" 
+          <v-btn
+            color="primary"
+            :loading="planStore.loading"
             @click="savePlan"
             :disabled="!valid"
           >
@@ -180,9 +167,9 @@
         <v-card-actions>
           <v-spacer />
           <v-btn color="grey" text @click="deleteDialog = false">Cancelar</v-btn>
-          <v-btn 
-            color="error" 
-            :loading="planStore.loading" 
+          <v-btn
+            color="error"
+            :loading="planStore.loading"
             @click="deleteSelectedPlan"
           >
             Confirmar Exclusão
@@ -194,26 +181,27 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { usePlanStore } from '~/stores/plans'
-import { useAuthStore } from '~/stores/auth'
+import { ref, computed, onMounted } from 'vue';
+import { usePlanStore } from '~/stores/plans';
+import { useAuthStore } from '~/stores/auth';
+import AppDataTable from '~/components/AppDataTable.vue';
 
-const planStore = usePlanStore()
-const authStore = useAuthStore()
-const form = ref(null)
-const dialog = ref(false)
-const deleteDialog = ref(false)
-const valid = ref(false)
-const editingPlan = ref(null)
-const deletePlan = ref(null)
+const planStore = usePlanStore();
+const authStore = useAuthStore();
+const form = ref(null);
+const dialog = ref(false);
+const deleteDialog = ref(false);
+const valid = ref(false);
+const editingPlan = ref(null);
+const deletePlan = ref(null);
 
 const formData = ref({
   name: '',
   price: 0,
   product_limit: 0,
   description: '',
-  ativo: true
-})
+  ativo: true,
+});
 
 const headers = [
   { title: 'ID', key: 'id', width: '80px' },
@@ -221,88 +209,86 @@ const headers = [
   { title: 'Preço', key: 'price', align: 'end' },
   { title: 'Limite', key: 'product_limit', align: 'end' },
   { title: 'Status', key: 'ativo', align: 'center' },
-  { title: 'Ações', key: 'actions', sortable: false, align: 'center', width: '120px' }
-]
+  { title: 'Ações', key: 'actions', sortable: false, align: 'center', width: '120px' },
+];
 
-// Filtra cabeçalhos para não mostrar ações se não for admin
 const filteredHeaders = computed(() => {
-  return authStore.isAdmin ? headers : headers.filter(h => h.key !== 'actions')
-})
+  return authStore.isAdmin ? headers : headers.filter((h) => h.key !== 'actions');
+});
 
 onMounted(() => {
-  planStore.fetchPlans()
-})
+  planStore.fetchPlans();
+});
 
 function formatPrice() {
   if (formData.value.price === '' || formData.value.price === null) {
-    formData.value.price = 0
+    formData.value.price = 0;
   } else {
-    // Garante que o valor tenha 2 casas decimais
-    formData.value.price = parseFloat(formData.value.price).toFixed(2)
+    formData.value.price = parseFloat(formData.value.price).toFixed(2);
   }
 }
 
 function startCreating() {
-  editingPlan.value = null
-  formData.value = { 
-    name: '', 
-    price: 0, 
-    product_limit: 0, 
-    description: '', 
-    ativo: true 
-  }
-  dialog.value = true
+  editingPlan.value = null;
+  formData.value = {
+    name: '',
+    price: 0,
+    product_limit: 0,
+    description: '',
+    ativo: true,
+  };
+  dialog.value = true;
 }
 
 function startEditing(plan) {
-  editingPlan.value = plan
-  formData.value = { 
+  editingPlan.value = plan;
+  formData.value = {
     name: plan.name,
     price: plan.price,
     product_limit: plan.product_limit,
     description: plan.description,
-    ativo: plan.ativo
-  }
-  dialog.value = true
+    ativo: plan.ativo,
+  };
+  dialog.value = true;
 }
 
 async function savePlan() {
-  const { valid } = await form.value.validate()
-  if (!valid) return
+  const { valid } = await form.value.validate();
+  if (!valid) return;
 
   try {
     if (editingPlan.value) {
-      await planStore.updatePlan(editingPlan.value.id, formData.value)
+      await planStore.updatePlan(editingPlan.value.id, formData.value);
     } else {
-      await planStore.savePlan(formData.value)
+      await planStore.savePlan(formData.value);
     }
-    dialog.value = false
+    dialog.value = false;
   } catch (error) {
-    console.error('Erro ao salvar plano:', error)
+    console.error('Erro ao salvar plano:', error);
   }
 }
 
 function confirmDelete(plan) {
   deletePlan.value = {
     ...plan,
-    users_count: plan.users?.length || 0
-  }
-  deleteDialog.value = true
+    users_count: plan.users?.length || 0,
+  };
+  deleteDialog.value = true;
 }
 
 async function deleteSelectedPlan() {
   try {
-    await planStore.deletePlan(deletePlan.value.id)
-    deleteDialog.value = false
+    await planStore.deletePlan(deletePlan.value.id);
+    deleteDialog.value = false;
   } catch (error) {
-    console.error('Erro ao excluir plano:', error)
+    console.error('Erro ao excluir plano:', error);
   }
 }
 
 function cancel() {
-  dialog.value = false
-  editingPlan.value = null
-  form.value?.reset()
+  dialog.value = false;
+  editingPlan.value = null;
+  form.value?.reset();
 }
 </script>
 

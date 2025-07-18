@@ -5,12 +5,20 @@ from plans.models import Plan
 
 class UserSerializer(serializers.ModelSerializer):
     active_plan = PlanSerializer(read_only=True)
+    active_plan_id = serializers.PrimaryKeyRelatedField(
+        queryset=Plan.objects.all(),
+        source='active_plan',
+        write_only=True,
+        allow_null=True
+    )
     
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'user_type', 'cnpj', 'address', 
-                 'responsible', 'phone', 'latitude', 'longitude', 'use_bulk_pricing', 
-                 'has_loyalty_card', 'active_plan']
+        fields = [
+            'id', 'username', 'email', 'user_type', 'cnpj', 'address',
+            'responsible', 'phone', 'latitude', 'longitude', 'use_bulk_pricing',
+            'has_loyalty_card', 'active_plan', 'active_plan_id'
+        ]
         read_only_fields = ['id', 'user_type']
 
 class ClientRegisterSerializer(serializers.ModelSerializer):
@@ -39,9 +47,11 @@ class StoreRegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'password', 'cnpj', 'address', 
-                'responsible', 'phone', 'latitude', 'longitude', 
-                'use_bulk_pricing', 'has_loyalty_card', 'plan_id']
+        fields = [
+            'username', 'email', 'password', 'cnpj', 'address',
+            'responsible', 'phone', 'latitude', 'longitude',
+            'use_bulk_pricing', 'has_loyalty_card', 'plan_id'
+        ]
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
@@ -70,14 +80,28 @@ class StoreRegisterSerializer(serializers.ModelSerializer):
         return user
 
 class StoreUpdateSerializer(serializers.ModelSerializer):
+    active_plan_id = serializers.PrimaryKeyRelatedField(
+        queryset=Plan.objects.all(),
+        source='active_plan',
+        allow_null=True,
+        required=False
+    )
+
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'cnpj', 'address', 'responsible', 
-                'phone', 'latitude', 'longitude', 'use_bulk_pricing', 'has_loyalty_card']
+        fields = [
+            'username', 'email', 'cnpj', 'address', 'responsible',
+            'phone', 'latitude', 'longitude', 'use_bulk_pricing',
+            'has_loyalty_card', 'active_plan_id'
+        ]
         
     def validate(self, data):
         if self.instance and self.instance.user_type != 'store':
-            if 'use_bulk_pricing' in data or 'has_loyalty_card' in data or 'phone' in data:
+            if any(key in data for key in [
+                'use_bulk_pricing', 'has_loyalty_card', 'phone',
+                'cnpj', 'address', 'responsible', 'latitude',
+                'longitude', 'active_plan_id'
+            ]):
                 raise serializers.ValidationError(
                     "Essas configurações são apenas para lojas"
                 )

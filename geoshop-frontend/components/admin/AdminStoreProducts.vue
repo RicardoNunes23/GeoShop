@@ -1,3 +1,4 @@
+<!-- pages/store-products.vue -->
 <template>
   <v-container>
     <h1 class="text-h4 mb-6">
@@ -23,64 +24,26 @@
       </v-card-title>
     </v-card>
 
-    <!-- Indicador de Carregamento -->
-    <v-progress-circular
-      v-if="loadingProducts"
-      indeterminate
-      color="primary"
-      class="mb-6"
-    ></v-progress-circular>
-
     <!-- Mensagem para nenhuma loja selecionada -->
     <v-alert
-      v-else-if="!selectedStore"
+      v-if="!loadingProducts && !selectedStore"
       type="info"
       class="mb-6"
     >
       Selecione uma loja para visualizar seus produtos.
     </v-alert>
 
-    <!-- Mensagem para loja sem produtos -->
-    <v-alert
-      v-else-if="selectedStore && storeProducts.length === 0"
-      type="info"
-      class="mb-6"
-    >
-      Nenhum produto encontrado para esta loja.
-    </v-alert>
-
-    <!-- Pesquisa e Total de Itens -->
-    <v-card v-else-if="selectedStore && storeProducts.length > 0" class="mb-6">
-      <v-card-text class="d-flex align-center justify-space-between">
-        <v-text-field
-          v-model="tableSearch"
-          label="Pesquisar produtos"
-          prepend-inner-icon="mdi-magnify"
-          clearable
-          style="max-width: 300px;"
-          @input="updateVisibleItemsCount"
-        ></v-text-field>
-        <div>
-          <v-chip color="primary" class="font-weight-bold mr-2">
-            Itens: {{ visibleItemsCount }}
-          </v-chip>
-        </div>
-      </v-card-text>
-    </v-card>
-
     <!-- Tabela de Produtos -->
-    <v-data-table
+    <AppDataTable
       v-if="selectedStore && storeProducts.length > 0"
-      ref="dataTable"
       :headers="productHeaders"
       :items="storeProducts"
       :loading="loadingProducts"
       :search="tableSearch"
-      :items-per-page="-1"
+      :show-item-count="true"
       :custom-filter="customFilter"
-      class="elevation-1"
-      @update:page="updateVisibleItemsCount"
-      @update:items-per-page="updateVisibleItemsCount"
+      :items-per-page="-1"
+      searchable
     >
       <template v-slot:item.image="{ item }">
         <v-img
@@ -107,7 +70,7 @@
           {{ item.is_active ? 'Ativo' : 'Inativo' }}
         </v-chip>
       </template>
-    </v-data-table>
+    </AppDataTable>
 
     <!-- Snackbar para mensagens -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000">
@@ -120,10 +83,10 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 import { useRouter } from 'vue-router';
+import AppDataTable from '~/components/AppDataTable.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
-const dataTable = ref(null);
 
 // Dados
 const stores = ref([]);
@@ -151,19 +114,15 @@ const baseHeaders = [
 
 const productHeaders = computed(() => {
   const headers = [...baseHeaders];
-  
   if (storeProducts.value.some(p => p.bulk_price !== null)) {
     headers.splice(3, 0, { title: 'Preço Qtd.', key: 'bulk_price', sortable: true });
   }
-  
   if (storeProducts.value.some(p => p.loyalty_price !== null)) {
     headers.splice(4, 0, { title: 'Preço Fidelidade', key: 'loyalty_price', sortable: true });
   }
-  
   if (storeProducts.value.some(p => p.bulk_min_quantity !== null)) {
     headers.splice(3, 0, { title: 'Qtd. Mínima', key: 'bulk_min_quantity', sortable: true });
   }
-
   return headers;
 });
 
@@ -173,16 +132,6 @@ const customFilter = (value, query, item) => {
   const normalizedQuery = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const productName = item.raw.product?.name?.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || '';
   return productName.includes(normalizedQuery);
-};
-
-// Atualiza contagem de itens visíveis
-const updateVisibleItemsCount = () => {
-  if (!dataTable.value) return;
-  
-  setTimeout(() => {
-    const rows = dataTable.value.$el.querySelectorAll('tbody tr:not(.v-data-table__no-data)');
-    visibleItemsCount.value = rows.length;
-  }, 50);
 };
 
 // Carrega lojas
@@ -233,9 +182,6 @@ const loadStoreProducts = async (storeId) => {
       bulk_min_quantity: product.bulk_min_quantity ? Number(product.bulk_min_quantity) : null,
       store: product.store || null,
     })) : [];
-    
-    // Atualiza a contagem após carregar os produtos
-    setTimeout(updateVisibleItemsCount, 100);
   } catch (error) {
     showSnackbar('Erro ao carregar produtos da loja', 'error');
     console.error('Erro ao carregar produtos:', error);
@@ -274,10 +220,6 @@ const showSnackbar = (message, color) => {
 // Watchers
 watch(selectedStore, (newStoreId) => {
   loadStoreProducts(newStoreId);
-});
-
-watch(tableSearch, () => {
-  updateVisibleItemsCount();
 });
 
 // Inicialização

@@ -1,4 +1,3 @@
-// stores/auth.ts
 import { defineStore } from 'pinia';
 import axios from 'axios';
 
@@ -23,7 +22,7 @@ interface User {
   longitude?: number;
   use_bulk_pricing?: boolean;
   has_loyalty_card?: boolean;
-  active_plan?: Plan | null; // Adicionado
+  active_plan?: Plan | null;
 }
 
 interface AuthState {
@@ -48,7 +47,7 @@ export const useAuthStore = defineStore('auth', {
       if (!state.user) return [];
       return this.isAdmin ? state.users : state.users.filter(user => user.id === state.user?.id);
     },
-    activePlan: (state) => state.user?.active_plan || null, // Getter para o plano ativo
+    activePlan: (state) => state.user?.active_plan || null,
   },
 
   actions: {
@@ -105,7 +104,11 @@ export const useAuthStore = defineStore('auth', {
         const response = await axios.get(`${useRuntimeConfig().public.apiBase}/users/`, {
           headers: { Authorization: `Bearer ${this.token}` },
         });
-        this.users = response.data;
+        this.users = response.data.map(user => ({
+          ...user,
+          latitude: user.latitude || null,
+          longitude: user.longitude || null,
+        }));
       } catch (error) {
         console.error('Erro ao buscar usuários:', error);
         throw error;
@@ -144,7 +147,7 @@ export const useAuthStore = defineStore('auth', {
           latitude: Number(storeData.latitude),
           longitude: Number(storeData.longitude),
         });
-        
+
         return response.data;
       } catch (error: any) {
         console.error('Erro ao registrar loja:', error);
@@ -162,6 +165,7 @@ export const useAuthStore = defineStore('auth', {
       longitude?: number;
       use_bulk_pricing?: boolean;
       has_loyalty_card?: boolean;
+      active_plan_id?: number | null;
     }) {
       if (!this.token || !this.isStore) throw new Error('Não autorizado');
 
@@ -194,26 +198,41 @@ export const useAuthStore = defineStore('auth', {
       address?: string;
       responsible?: string;
       phone?: string;
+      latitude?: number;
+      longitude?: number;
       use_bulk_pricing?: boolean;
       has_loyalty_card?: boolean;
+      active_plan_id?: number | null;
     }) {
       if (!this.token || !this.isAdmin) throw new Error('Não autorizado');
 
       try {
-        if (userData.user_type !== 'store') {
-          delete userData.use_bulk_pricing;
-          delete userData.has_loyalty_card;
-          delete userData.phone;
+        const payload: any = {
+          username: userData.username,
+          email: userData.email,
+          user_type: userData.user_type,
+        };
+
+        if (userData.user_type === 'store') {
+          payload.cnpj = userData.cnpj;
+          payload.address = userData.address;
+          payload.responsible = userData.responsible;
+          payload.phone = userData.phone;
+          payload.latitude = userData.latitude;
+          payload.longitude = userData.longitude;
+          payload.use_bulk_pricing = userData.use_bulk_pricing;
+          payload.has_loyalty_card = userData.has_loyalty_card;
+          payload.active_plan_id = userData.active_plan_id || null;
         }
 
         const response = await axios.put(
           `${useRuntimeConfig().public.apiBase}/users/${userData.id}/`,
-          userData,
+          payload,
           { headers: { Authorization: `Bearer ${this.token}` } }
         );
 
         this.users = this.users.map(user =>
-          user.id === userData.id ? response.data : user
+          user.id === userData.id ? { ...user, ...response.data } : user
         );
 
         if (this.user?.id === userData.id) {
@@ -224,7 +243,7 @@ export const useAuthStore = defineStore('auth', {
         return response.data;
       } catch (error) {
         console.error('Erro ao atualizar usuário:', error);
-        throw new Error('Falha ao atualizar usuário');
+        throw new Error(error.response?.data?.message || 'Falha ao atualizar usuário');
       }
     },
 

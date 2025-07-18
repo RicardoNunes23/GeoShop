@@ -1,3 +1,4 @@
+<!-- pages/products.vue -->
 <template>
   <v-container>
     <h1>Gerenciamento de Produtos</h1>
@@ -12,42 +13,30 @@
         Excluir Selecionados ({{ selectedItems.length }})
       </v-btn>
     </div>
-    
-    <!-- Campo de pesquisa -->
-    <v-text-field
-      v-model="search"
-      label="Pesquisar"
-      prepend-inner-icon="mdi-magnify"
-      single-line
-      hide-details
-      class="mb-4 mt-4"
-    ></v-text-field>
-    
-    <v-data-table
+
+    <AppDataTable
       :headers="headers"
       :items="filteredProducts"
       :loading="productStore.loading"
-      class="elevation-1"
-      show-select
-      v-model="selectedItems"
+      :show-select="true"
+      v-model:selected="selectedItems"
+      searchable
     >
       <template v-slot:item.image="{ item }">
-        <div>
-          <v-img
-            :src="imageUrl(item.image)"
-            max-width="50"
-            max-height="50"
-            @error="onImageError(item)"
-            @click="openImageDialog(item)" 
-            style="cursor: pointer;" 
-          ></v-img>
-        </div>
+        <v-img
+          :src="imageUrl(item.image)"
+          max-width="50"
+          max-height="50"
+          @error="onImageError(item)"
+          @click="openImageDialog(item)"
+          style="cursor: pointer;"
+        ></v-img>
       </template>
-      <template v-slot:item.actions="{ item }">
+      <template v-slot:actions="{ item }">
         <v-btn color="warning" small @click="openEditDialog(item)">Editar</v-btn>
         <v-btn color="error" small @click="confirmDelete(item.id)">Excluir</v-btn>
       </template>
-    </v-data-table>
+    </AppDataTable>
 
     <!-- Diálogo para adicionar/editar produto -->
     <v-dialog v-model="dialog" max-width="600px">
@@ -63,7 +52,6 @@
               :rules="[v => !!v || 'Nome é obrigatório']"
               required
             ></v-text-field>
-            
             <v-select
               v-model="formData.package_type"
               :items="packageTypes"
@@ -73,7 +61,6 @@
               :rules="[v => !!v || 'Tipo de embalagem é obrigatório']"
               required
             ></v-select>
-            
             <v-text-field
               v-model="combinedQuantity"
               label="Quantidade (ex: 5kg, 100g, 1L, 2un)"
@@ -81,13 +68,11 @@
               required
               @blur="parseCombinedQuantity"
             ></v-text-field>
-            
             <v-textarea
               v-model="formData.description"
               label="Descrição"
               rows="3"
             ></v-textarea>
-            
             <v-file-input
               v-model="formData.image"
               label="Imagem do Produto"
@@ -158,40 +143,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useProductStore } from '~/stores/products'
+import { ref, computed, onMounted } from 'vue';
+import { useProductStore } from '~/stores/products';
+import AppDataTable from '~/components/AppDataTable.vue';
 
 definePageMeta({
   middleware: ['auth'],
-})
+});
 
-const productStore = useProductStore()
-const dialog = ref(false)
-const deleteDialog = ref(false)
-const imageDialog = ref(false)
-const isEditing = ref(false)
-const valid = ref(false)
-const deleteId = ref<number | null>(null)
-const snackbar = ref(false)
-const snackbarText = ref('')
-const snackbarColor = ref('success')
-const selectedProduct = ref<any>({})
-const search = ref('')
-const selectedItems = ref<number[]>([])
-const combinedQuantity = ref('')
+const productStore = useProductStore();
+const dialog = ref(false);
+const deleteDialog = ref(false);
+const imageDialog = ref(false);
+const isEditing = ref(false);
+const valid = ref(false);
+const deleteId = ref<number | null>(null);
+const snackbar = ref(false);
+const snackbarText = ref('');
+const snackbarColor = ref('success');
+const selectedProduct = ref<any>({});
+const search = ref('');
+const selectedItems = ref<number[]>([]);
+const combinedQuantity = ref('');
 
-const baseUrl = ref('http://localhost:8000')
+const baseUrl = ref('http://localhost:8000');
 
 const imageUrl = computed(() => {
   return (image: string | undefined) => {
-    if (!image) return '/placeholder.png'
+    if (!image) return '/placeholder.png';
     if (image.startsWith('http://') || image.startsWith('https://')) {
-      return image
+      return image;
     }
-    const cleanImagePath = image.startsWith('/') ? image.slice(1) : image
-    return `${baseUrl.value}/media/${cleanImagePath}`
-  }
-})
+    const cleanImagePath = image.startsWith('/') ? image.slice(1) : image;
+    return `${baseUrl.value}/media/${cleanImagePath}`;
+  };
+});
 
 const formData = ref({
   id: null as number | null,
@@ -201,7 +187,7 @@ const formData = ref({
   weight_unit: '',
   description: '',
   image: null as File | null,
-})
+});
 
 const packageTypes = [
   { text: 'Saco', value: 'saco' },
@@ -211,7 +197,7 @@ const packageTypes = [
   { text: 'Bandeja', value: 'bandeja' },
   { text: 'Garrafa', value: 'garrafa' },
   { text: 'Outro', value: 'outro' },
-]
+];
 
 const unitOptions = [
   { text: 'kg', value: 'kg' },
@@ -219,69 +205,64 @@ const unitOptions = [
   { text: 'ml', value: 'ml' },
   { text: 'L', value: 'l' },
   { text: 'un', value: 'un' },
-]
+];
 
 const headers = [
   { title: 'Imagem', key: 'image', sortable: false },
   { title: 'Produto/ Marca', key: 'name' },
-  { 
-    title: 'Tipo de Embalagem', 
+  {
+    title: 'Tipo de Embalagem',
     key: 'package_type',
-    value: (item) => item.package_type ? 
-      item.package_type.charAt(0).toUpperCase() + item.package_type.slice(1) : 
-      ''
+    value: (item) => item.package_type ? item.package_type.charAt(0).toUpperCase() + item.package_type.slice(1) : '',
   },
-  { 
-    title: 'Quantidade', 
-    key: 'quantity', 
-    value: (item) => formatQuantity(item.quantity, item.weight_unit)
+  {
+    title: 'Quantidade',
+    key: 'quantity',
+    value: (item) => formatQuantity(item.quantity, item.weight_unit),
   },
   { title: 'Ações', key: 'actions', sortable: false },
-]
+];
 
 const filteredProducts = computed(() => {
-  if (!search.value) return productStore.products
+  if (!search.value) return productStore.products;
 
-  const searchTerm = search.value.toLowerCase()
+  const searchTerm = search.value.toLowerCase();
   return productStore.products.filter(product => {
-    const quantityStr = product.quantity ? `${product.quantity}${product.weight_unit}`.toLowerCase() : ''
+    const quantityStr = product.quantity ? `${product.quantity}${product.weight_unit}`.toLowerCase() : '';
     return (
       (product.name?.toLowerCase().includes(searchTerm)) ||
       (product.package_type?.toLowerCase().includes(searchTerm)) ||
       (product.description?.toLowerCase().includes(searchTerm)) ||
       (quantityStr.includes(searchTerm))
-    )
-  })
-})
+    );
+  });
+});
 
 onMounted(() => {
   productStore.fetchProducts().then(() => {
-    console.log('Produtos carregados:', productStore.products)
-  })
-})
+    console.log('Produtos carregados:', productStore.products);
+  });
+});
 
 function formatQuantity(quantity: number, unit: string) {
   const formattedValue = Number.isInteger(quantity) 
     ? quantity.toString() 
-    : parseFloat(quantity.toString()).toString()
-  
-  // Mantém todas as unidades em minúsculo, exceto "L"
-  const formattedUnit = unit.toLowerCase() === 'l' ? 'L' : unit.toLowerCase()
-  
-  return `${formattedValue}${formattedUnit}`
+    : parseFloat(quantity.toString()).toString();
+  const formattedUnit = unit.toLowerCase() === 'l' ? 'L' : unit.toLowerCase();
+  return `${formattedValue}${formattedUnit}`;
 }
 
 function onImageError(item: any) {
-  console.error(`Erro ao carregar imagem para o produto ${item.name}: ${item.image}`)
+  console.error(`Erro ao carregar imagem para o produto ${item.name}: ${item.image}`);
 }
 
 function openImageDialog(item: any) {
-  selectedProduct.value = { ...item }
-  imageDialog.value = true
+  selectedProduct.value = { ...item };
+  imageDialog.value = true;
 }
 
 function openCreateDialog() {
-  isEditing.value = false
+  isEditing.value = false;
   formData.value = {
     id: null,
     name: '',
@@ -290,13 +271,13 @@ function openCreateDialog() {
     weight_unit: '',
     description: '',
     image: null,
-  }
-  combinedQuantity.value = ''
-  dialog.value = true
+  };
+  combinedQuantity.value = '';
+  dialog.value = true;
 }
 
 function openEditDialog(item: any) {
-  isEditing.value = true
+  isEditing.value = true;
   formData.value = {
     id: item.id,
     name: item.name || '',
@@ -305,134 +286,117 @@ function openEditDialog(item: any) {
     weight_unit: typeof item.weight_unit === 'string' ? item.weight_unit : '',
     description: item.description || '',
     image: null,
-  }
-  combinedQuantity.value = `${item.quantity}${item.weight_unit}`
-  dialog.value = true
+  };
+  combinedQuantity.value = `${item.quantity}${item.weight_unit}`;
+  dialog.value = true;
 }
 
 const validateCombinedQuantity = (value: string) => {
-  if (!value) return 'Quantidade é obrigatória'
-  
-  const hasValidUnit = unitOptions.some(unit => 
-    value.toLowerCase().endsWith(unit.value))
-  
+  if (!value) return 'Quantidade é obrigatória';
+  const hasValidUnit = unitOptions.some(unit => value.toLowerCase().endsWith(unit.value));
   if (!hasValidUnit) {
-    return 'Formato inválido. Use: número + unidade (ex: 5kg, 100g, 1L, 2un)'
+    return 'Formato inválido. Use: número + unidade (ex: 5kg, 100g, 1L, 2un)';
   }
-  
-  const numericValue = parseCombinedValue(value)
+  const numericValue = parseCombinedValue(value);
   if (isNaN(numericValue)) {
-    return 'Quantidade deve ser um número válido'
+    return 'Quantidade deve ser um número válido';
   }
-  
   if (numericValue <= 0) {
-    return 'Quantidade deve ser maior que zero'
+    return 'Quantidade deve ser maior que zero';
   }
-  
-  return true
-}
+  return true;
+};
 
 function parseCombinedValue(value: string): number {
-  // Ordena as unidades por tamanho (mais longas primeiro) para evitar conflitos
-  const sortedUnits = [...unitOptions].sort((a, b) => b.value.length - a.value.length)
-  
-  const matchedUnit = sortedUnits.find(unit => 
-    value.toLowerCase().endsWith(unit.value))
-  
+  const sortedUnits = [...unitOptions].sort((a, b) => b.value.length - a.value.length);
+  const matchedUnit = sortedUnits.find(unit => value.toLowerCase().endsWith(unit.value));
   if (matchedUnit) {
-    const numericPart = value.substring(0, value.length - matchedUnit.value.length)
-    return parseFloat(numericPart)
+    const numericPart = value.substring(0, value.length - matchedUnit.value.length);
+    return parseFloat(numericPart);
   }
-  return NaN
+  return NaN;
 }
 
 function parseCombinedQuantity() {
-  if (!combinedQuantity.value) return
-  
-  const matchedUnit = unitOptions.find(unit => 
-    combinedQuantity.value.toLowerCase().endsWith(unit.value))
-  
+  if (!combinedQuantity.value) return;
+  const matchedUnit = unitOptions.find(unit => combinedQuantity.value.toLowerCase().endsWith(unit.value));
   if (matchedUnit) {
-    const numericValue = parseCombinedValue(combinedQuantity.value)
-    
+    const numericValue = parseCombinedValue(combinedQuantity.value);
     if (!isNaN(numericValue)) {
-      formData.value.quantity = numericValue
-      formData.value.weight_unit = matchedUnit.value
+      formData.value.quantity = numericValue;
+      formData.value.weight_unit = matchedUnit.value;
     }
   }
 }
 
 async function saveProduct() {
-  parseCombinedQuantity()
-  
-  const data = new FormData()
-  data.append('name', formData.value.name)
-  data.append('package_type', formData.value.package_type)
-  data.append('quantity', String(formData.value.quantity))
-  data.append('weight_unit', formData.value.weight_unit)
-  if (formData.value.description) data.append('description', formData.value.description)
+  parseCombinedQuantity();
+  const data = new FormData();
+  data.append('name', formData.value.name);
+  data.append('package_type', formData.value.package_type);
+  data.append('quantity', String(formData.value.quantity));
+  data.append('weight_unit', formData.value.weight_unit);
+  if (formData.value.description) data.append('description', formData.value.description);
   if (formData.value.image) {
-    data.append('image', formData.value.image)
+    data.append('image', formData.value.image);
   }
 
   try {
     if (isEditing.value && formData.value.id) {
-      await productStore.updateProduct(formData.value.id, data)
-      snackbarText.value = 'Produto atualizado com sucesso!'
-      snackbarColor.value = 'success'
+      await productStore.updateProduct(formData.value.id, data);
+      snackbarText.value = 'Produto atualizado com sucesso!';
+      snackbarColor.value = 'success';
     } else {
-      await productStore.createProduct(data)
-      snackbarText.value = 'Produto criado com sucesso!'
-      snackbarColor.value = 'success'
+      await productStore.createProduct(data);
+      snackbarText.value = 'Produto criado com sucesso!';
+      snackbarColor.value = 'success';
     }
-    dialog.value = false
+    dialog.value = false;
   } catch (err) {
-    snackbarText.value = productStore.error || 'Erro ao salvar produto'
-    snackbarColor.value = 'error'
-    console.error('Erro ao salvar produto:', err)
+    snackbarText.value = productStore.error || 'Erro ao salvar produto';
+    snackbarColor.value = 'error';
+    console.error('Erro ao salvar produto:', err);
   }
-  snackbar.value = true
+  snackbar.value = true;
 }
 
 function confirmDelete(id: number) {
-  deleteId.value = id
-  selectedItems.value = []
-  deleteDialog.value = true
+  deleteId.value = id;
+  selectedItems.value = [];
+  deleteDialog.value = true;
 }
 
 function confirmDeleteSelected() {
-  deleteId.value = null
-  deleteDialog.value = true
+  deleteId.value = null;
+  deleteDialog.value = true;
 }
 
 async function deleteSelectedProducts() {
   try {
     if (deleteId.value) {
-      await productStore.deleteProduct(deleteId.value)
-      snackbarText.value = 'Produto excluído com sucesso!'
+      await productStore.deleteProduct(deleteId.value);
+      snackbarText.value = 'Produto excluído com sucesso!';
     } else if (selectedItems.value.length > 0) {
       const validItems = selectedItems.value
         .map(id => productStore.products.find(product => product.id === id))
-        .filter(item => item && item.id !== undefined && item.id !== null)
-      
+        .filter(item => item && item.id !== undefined && item.id !== null);
       if (validItems.length === 0) {
-        throw new Error('Nenhum item válido selecionado para exclusão')
+        throw new Error('Nenhum item válido selecionado para exclusão');
       }
-      
-      await Promise.all(validItems.map(item => productStore.deleteProduct(item.id)))
-      snackbarText.value = `${validItems.length} produtos excluídos com sucesso!`
-      selectedItems.value = []
+      await Promise.all(validItems.map(item => productStore.deleteProduct(item.id)));
+      snackbarText.value = `${validItems.length} produtos excluídos com sucesso!`;
+      selectedItems.value = [];
     } else {
-      throw new Error('Nenhum produto selecionado para exclusão')
+      throw new Error('Nenhum produto selecionado para exclusão');
     }
-    snackbarColor.value = 'success'
+    snackbarColor.value = 'success';
   } catch (err) {
-    console.error('Erro ao excluir produto(s):', err)
-    snackbarText.value = productStore.error || `Erro ao excluir produto(s): ${err.message}`
-    snackbarColor.value = 'error'
+    console.error('Erro ao excluir produto(s):', err);
+    snackbarText.value = productStore.error || `Erro ao excluir produto(s): ${err.message}`;
+    snackbarColor.value = 'error';
   }
-  snackbar.value = true
-  deleteDialog.value = false
-  deleteId.value = null
+  snackbar.value = true;
+  deleteDialog.value = false;
+  deleteId.value = null;
 }
 </script>
