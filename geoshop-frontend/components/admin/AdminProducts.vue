@@ -9,33 +9,38 @@
       </v-btn>
     </div>
 
-    <AppDataTable 
-      :headers="headers" 
-      :items="paginatedProducts" 
-      :loading="productStore.loading"
-      :items-per-page="itemsPerPage" 
-      v-model:page="page"
-      :show-select="true" 
-      v-model:selected="selectedItems" 
-      searchable
-      @update:page="handlePageChange" 
-      @update:items-per-page="handleItemsPerPageChange"
-      @update:search="search = $event">
-      <template v-slot:item.image="{ item }">
-        <v-img :src="imageUrl(item.image)" max-width="50" max-height="50" @error="onImageError(item)"
-          @click="openImageDialog(item)" style="cursor: pointer;"></v-img>
-      </template>
-      <template v-slot:item.quantity="{ item }">
-        {{ formatQuantity(item.quantity, item.weight_unit) }}
-      </template>
-      <template v-slot:item.package_type="{ item }">
-        {{ formatPackageType(item.package_type) }}
-      </template>
-      <template v-slot:item.actions="{ item }">
-        <v-btn color="warning" small @click="openEditDialog(item)">Editar</v-btn>
-        <v-btn color="error" small @click="confirmDelete(item.id)">Excluir</v-btn>
-      </template>
-    </AppDataTable>
+   <AppDataTable 
+    :headers="headers" 
+    :items="paginatedProducts" 
+    :loading="productStore.loading"
+    :items-per-page="itemsPerPage" 
+    v-model:page="page"
+    :show-select="true" 
+    v-model:selected="selectedItems" 
+    searchable
+    @update:page="handlePageChange" 
+    @update:items-per-page="handleItemsPerPageChange"
+    @update:search="search = $event"
+  >
+    <template v-slot:item.image="{ item }">
+      <v-img :src="imageUrl(item.image)" max-width="50" max-height="50" @error="onImageError(item)"
+        @click="openImageDialog(item)" style="cursor: pointer;"></v-img>
+    </template>
+    <template v-slot:item.quantity="{ item }">
+      {{ formatQuantity(item.quantity, item.weight_unit) }}
+    </template>
+    <template v-slot:item.package_type="{ item }">
+      {{ formatPackageType(item.package_type) }}
+    </template>
+    <template v-slot:item.actions="{ item }">
+      <AppActionButtons
+        :item="item"
+        :show-details="false"
+        @edit="openEditDialog"
+        @delete="() => confirmDelete(item.id)"
+      />
+    </template>
+  </AppDataTable>
 
     <v-pagination v-model="page" :length="totalPages" :total-visible="7" class="mt-4"></v-pagination>
 

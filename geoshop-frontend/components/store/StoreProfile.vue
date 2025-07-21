@@ -8,46 +8,27 @@
     <!-- Tabela com AppDataTable -->
     <div class="pa-4 mb-6">
       <AppDataTable
-        :items="[profile]"
-        :headers="headers"
-        :loading="loading"
-        hide-empty-message
-        :table-class="'no-border'"
-      >
-        <template v-slot:item.use_bulk_pricing="{ item }">
-          {{ item.use_bulk_pricing ? 'Sim' : 'Não' }}
-        </template>
-        <template v-slot:item.has_loyalty_card="{ item }">
-          {{ item.has_loyalty_card ? 'Sim' : 'Não' }}
-        </template>
-        <template v-slot:actions="{ item }">
-          <div class="d-flex">
-            <v-btn
-              color="primary"
-              class="mr-2"
-              @click="openDetailsModal"
-            >
-              <v-icon left>mdi-eye</v-icon>
-              Ver Detalhes
-            </v-btn>
-            <v-btn
-              color="primary"
-              class="mr-2"
-              @click="openEditModal(item)"
-            >
-              <v-icon left>mdi-pencil</v-icon>
-              Editar
-            </v-btn>
-            <v-btn
-              color="error"
-              @click="confirmDeleteProfile(item)"
-            >
-              <v-icon left>mdi-delete</v-icon>
-              Excluir
-            </v-btn>
-          </div>
-        </template>
-      </AppDataTable>
+      :items="[profile]"
+      :headers="headers"
+      :loading="loading"
+      hide-empty-message
+      :table-class="'no-border'"
+    >
+      <template v-slot:item.use_bulk_pricing="{ item }">
+        {{ item.use_bulk_pricing ? 'Sim' : 'Não' }}
+      </template>
+      <template v-slot:item.has_loyalty_card="{ item }">
+        {{ item.has_loyalty_card ? 'Sim' : 'Não' }}
+      </template>
+      <template v-slot:item.actions="{ item }">
+        <AppActionButtons
+          :item="item"
+          @details="openDetailsModal"
+          @edit="openEditModal"
+          @delete="confirmDeleteProfile"
+        />
+      </template>
+    </AppDataTable>
     </div>
 
     <v-alert
@@ -263,7 +244,7 @@ const headers = ref([
     title: 'Tem Cartão Fidelidade',
     key: 'has_loyalty_card',
   },
-  { title: 'Ações', key: 'actions', sortable: false },
+  { title: '', key: 'actions', sortable: false },
 ]);
 
 const detailsModal = ref(false);

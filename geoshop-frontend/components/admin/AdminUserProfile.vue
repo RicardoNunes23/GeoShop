@@ -31,35 +31,32 @@
       <v-window v-model="activeTab" class="mt-4">
         <v-window-item v-for="tab in ['admin', 'store', 'client']" :key="tab" :value="tab">
           <AppDataTable
-            :headers="tab === 'store' ? storeHeaders : baseHeaders"
-            :items="filteredUsers"
-            :loading="loading"
-            :search="searchQuery"
-            :items-per-page="itemsPerPage"
-            v-model:page="page"
-            searchable
-            @update:page="handlePageChange"
-            @update:items-per-page="handleItemsPerPageChange"
-          >
-            <template v-slot:item.user_type="{ item }">
-              {{ formatUserType(item.user_type) }}
-            </template>
-
-            <template v-slot:item.active_plan="{ item }">
-              <span v-if="item.active_plan">{{ item.active_plan.name }}</span>
-              <span v-else>Nenhum</span>
-            </template>
-
-            <template v-slot:item.use_bulk_pricing="{ item }">
-              <v-icon v-if="item.use_bulk_pricing" left color="success">
-                mdi-check-circle-outline
-              </v-icon>
-              <v-icon v-else left color="error">
-                mdi-alpha-x-circle-outline
-              </v-icon>
-            </template>
-
-            <template v-slot:item.has_loyalty_card="{ item }">
+      :headers="tab === 'store' ? storeHeaders : baseHeaders"
+      :items="filteredUsers"
+      :loading="loading"
+      :search="searchQuery"
+      :items-per-page="itemsPerPage"
+      v-model:page="page"
+      searchable
+      @update:page="handlePageChange"
+      @update:items-per-page="handleItemsPerPageChange"
+    >
+      <template v-slot:item.user_type="{ item }">
+        {{ formatUserType(item.user_type) }}
+      </template>
+      <template v-slot:item.active_plan="{ item }">
+        <span v-if="item.active_plan">{{ item.active_plan.name }}</span>
+        <span v-else>Nenhum</span>
+      </template>
+      <template v-slot:item.use_bulk_pricing="{ item }">
+        <v-icon v-if="item.use_bulk_pricing" left color="success">
+          mdi-check-circle-outline
+        </v-icon>
+        <v-icon v-else left color="error">
+          mdi-alpha-x-circle-outline
+        </v-icon>
+      </template>
+                <template v-slot:item.has_loyalty_card="{ item }">
               <v-icon v-if="item.has_loyalty_card" left color="success">
                 mdi-check-circle-outline
               </v-icon>
@@ -67,23 +64,16 @@
                 mdi-alpha-x-circle-outline
               </v-icon>
             </template>
-
-            <template v-slot:item.actions="{ item }">
-              <div class="d-flex">
-                <v-btn v-if="tab === 'store'" color="primary" variant="text" size="small" class="mr-2"
-                  @click="openDetailsModal(item)">
-                  <v-icon left>mdi-eye</v-icon>
-                  Detalhes
-                </v-btn>
-                <v-btn color="primary" variant="text" size="small" class="mr-2" @click="openEditModal(item)">
-                  <v-icon left>mdi-pencil</v-icon>
-                </v-btn>
-                <v-btn color="error" variant="text" size="small" @click="confirmDeleteUser(item)">
-                  <v-icon left>mdi-delete</v-icon>
-                </v-btn>
-              </div>
-            </template>
-          </AppDataTable>
+      <template v-slot:item.actions="{ item }">
+        <AppActionButtons
+          :item="item"
+          :show-details="tab === 'store'"
+          @details="openDetailsModal"
+          @edit="openEditModal"
+          @delete="confirmDeleteUser"
+        />
+      </template>
+    </AppDataTable>
 
           <v-pagination v-model="page" :length="totalPages" :total-visible="7" class="mt-4"></v-pagination>
         </v-window-item>

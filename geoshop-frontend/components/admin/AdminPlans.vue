@@ -29,52 +29,29 @@
 
     <!-- Tabela de planos -->
     <AppDataTable
-      :headers="filteredHeaders"
-      :items="planStore.plans"
-      :loading="planStore.loading"
-      :items-per-page="10"
-      :hide-actions="!authStore.isAdmin"
-    >
-      <template v-slot:item.price="{ item }">
-        R$ {{ item.price.toFixed(2) }}
-      </template>
-      <template v-slot:item.ativo="{ item }">
-        <v-chip :color="item.ativo ? 'success' : 'error'" small>
-          {{ item.ativo ? 'Ativo' : 'Inativo' }}
-        </v-chip>
-      </template>
-      <template v-if="authStore.isAdmin" v-slot:item.actions="{ item }"> 
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
-            <v-btn
-              color="primary"
-              small
-              class="mr-2"
-              @click="startEditing(item)"
-              v-bind="attrs"
-              v-on="on"
-            >
-              <v-icon small>mdi-pencil</v-icon>
-            </v-btn>
-          </template>
-          <span>Editar</span>
-        </v-tooltip>
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
-            <v-btn
-              color="error"
-              small
-              @click="confirmDelete(item)"
-              v-bind="attrs"
-              v-on="on"
-            >
-              <v-icon small>mdi-delete</v-icon>
-            </v-btn>
-          </template>
-          <span>Excluir</span>
-        </v-tooltip>
-      </template>
-    </AppDataTable>
+    :headers="filteredHeaders"
+    :items="planStore.plans"
+    :loading="planStore.loading"
+    :items-per-page="10"
+    :hide-actions="!authStore.isAdmin"
+  >
+    <template v-slot:item.price="{ item }">
+      R$ {{ item.price.toFixed(2) }}
+    </template>
+    <template v-slot:item.ativo="{ item }">
+      <v-chip :color="item.ativo ? 'success' : 'error'" small>
+        {{ item.ativo ? 'Ativo' : 'Inativo' }}
+      </v-chip>
+    </template>
+    <template v-if="authStore.isAdmin" v-slot:item.actions="{ item }">
+      <AppActionButtons
+        :item="item"
+        :show-details="false"
+        @edit="startEditing"
+        @delete="confirmDelete"
+      />
+    </template>
+  </AppDataTable>
 
     <!-- Diálogo de criação/edição -->
     <v-dialog v-model="dialog" max-width="600px" persistent>

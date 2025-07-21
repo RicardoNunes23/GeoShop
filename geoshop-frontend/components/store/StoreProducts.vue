@@ -21,48 +21,52 @@
     </v-btn>
 
     <!-- Tabela com AppDataTable -->
-    <AppDataTable
-      :headers="filteredHeaders"
-      :items="storeProductStore.storeProducts"
-      :loading="storeProductStore.loading"
-      :search="tableSearch"
-      :custom-filter="customProductFilter"
-      searchable
-      show-item-count
-      table-class="no-border"
-    >
-      <template v-slot:item.product.image="{ item }">
-        <v-img
-          :src="imageUrl(item.product?.image)"
-          max-width="50"
-          max-height="50"
-          @error="onImageError(item)"
-          @click="openImageDialog(item)"
-          style="cursor: pointer;"
-        ></v-img>
-      </template>
-      <template v-slot:item.price="{ item }">
-        {{ formatPrice(item.price) }}
-      </template>
-      <template v-slot:item.bulk_price="{ item }">
-        {{ formatPrice(item.bulk_price) }}
-      </template>
-      <template v-slot:item.loyalty_price="{ item }">
-        {{ formatPrice(item.loyalty_price) }}
-      </template>
-      <template v-slot:item.bulk_min_quantity="{ item }">
-        {{ formatQuantity(item.bulk_min_quantity) }}
-      </template>
-      <template v-slot:item.is_active="{ item }">
-        <v-chip :color="item.is_active ? 'success' : 'error'" small>
-          {{ item.is_active ? 'Ativo' : 'Inativo' }}
-        </v-chip>
-      </template>
-      <template v-slot:actions="{ item }">
-        <v-btn color="warning" small @click="openEditDialog(item)">Editar</v-btn>
-        <v-btn color="error" small @click="confirmDelete(item.id)">Excluir</v-btn>
-      </template>
-    </AppDataTable>
+   <AppDataTable
+    :headers="filteredHeaders"
+    :items="storeProductStore.storeProducts"
+    :loading="storeProductStore.loading"
+    :search="tableSearch"
+    :custom-filter="customProductFilter"
+    searchable
+    show-item-count
+    table-class="no-border"
+  >
+    <template v-slot:item.product.image="{ item }">
+      <v-img
+        :src="imageUrl(item.product?.image)"
+        max-width="50"
+        max-height="50"
+        @error="onImageError(item)"
+        @click="openImageDialog(item)"
+        style="cursor: pointer;"
+      ></v-img>
+    </template>
+    <template v-slot:item.price="{ item }">
+      {{ formatPrice(item.price) }}
+    </template>
+    <template v-slot:item.bulk_price="{ item }">
+      {{ formatPrice(item.bulk_price) }}
+    </template>
+    <template v-slot:item.loyalty_price="{ item }">
+      {{ formatPrice(item.loyalty_price) }}
+    </template>
+    <template v-slot:item.bulk_min_quantity="{ item }">
+      {{ formatQuantity(item.bulk_min_quantity) }}
+    </template>
+    <template v-slot:item.is_active="{ item }">
+      <v-chip :color="item.is_active ? 'success' : 'error'" small>
+        {{ item.is_active ? 'Ativo' : 'Inativo' }}
+      </v-chip>
+    </template>
+    <template v-slot:actions="{ item }">
+      <AppActionButtons
+        :item="item"
+        :show-details="false"
+        @edit="openEditDialog"
+        @delete="() => confirmDelete(item.id)"
+      />
+    </template>
+  </AppDataTable>
 
     <!-- Diálogo para adicionar/editar produto -->
     <v-dialog v-model="dialog" max-width="600px">
