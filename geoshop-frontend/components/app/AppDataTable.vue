@@ -1,10 +1,8 @@
 <!-- AppDataTable.vue -->
 <template>
   <v-container fluid class="pa-0">
-    <!-- Contagem de itens visíveis -->
-    <v-chip v-if="showItemCount && items.length > 0" color="primary" class="mb-2">
-      Itens: {{ visibleItemsCount }}
-    </v-chip>
+   
+  
     
     <!-- Pesquisa -->
     <v-text-field

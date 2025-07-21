@@ -299,7 +299,7 @@ import { reactive, ref, computed, onMounted } from 'vue';
 import { useStoreProductStore } from '~/stores/storeProducts';
 import { useAuthStore } from '~/stores/auth';
 import { useRouter } from 'vue-router';
-import AppDataTable from '~/components/App/AppDataTable.vue';
+import AppDataTable from '~/components/app/AppDataTable.vue';
 
 interface Product {
   id: number;

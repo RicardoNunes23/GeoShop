@@ -161,7 +161,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { usePlanStore } from '~/stores/plans';
 import { useAuthStore } from '~/stores/auth';
-import AppDataTable from '~/components/App/AppDataTable.vue';
+import AppDataTable from '~/components/app/AppDataTable.vue';
 
 const planStore = usePlanStore();
 const authStore = useAuthStore();

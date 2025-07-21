@@ -134,7 +134,7 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 import { useRouter } from 'vue-router';
-import AppDataTable from '~/components/App/AppDataTable.vue';
+import AppDataTable from '~/components/app/AppDataTable.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();

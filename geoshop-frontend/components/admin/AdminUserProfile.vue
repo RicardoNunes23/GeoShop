@@ -78,7 +78,7 @@
         </v-window-item>
       </v-window>
 
-      <!-- Modais (mantidos iguais) -->
+      <!-- Modais -->
       <v-dialog v-model="detailsModal" max-width="600">
         <v-card>
           <v-card-title class="text-h5 font-weight-bold text-primary">
@@ -216,11 +216,11 @@
 
 <script setup>
 import { useAuthStore } from '~/stores/auth';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from '#app';
-import { mask } from 'vue-the-mask'; 
+import { mask } from 'vue-the-mask';
 import { debounce } from 'lodash-es';
-import AppDataTable from '~/components/App/AppDataTable.vue';
+import AppDataTable from '~/components/app/AppDataTable.vue';
 import { usePlanStore } from '~/stores/plans';
 
 const authStore = useAuthStore();
@@ -241,6 +241,7 @@ const editModal = ref(false);
 const confirmDelete = ref(false);
 const error = ref('');
 const form = ref(null);
+const editFormValid = ref(false); // Propriedade para validade do formulário
 
 // Formulário de edição
 const editForm = ref({
@@ -259,6 +260,23 @@ const editForm = ref({
   latitude: null,
   longitude: null,
 });
+
+// Função para validar o formulário dinamicamente
+const validateForm = async () => {
+  if (form.value) {
+    const { valid } = await form.value.validate();
+    editFormValid.value = valid;
+  }
+};
+
+// Observar mudanças no editForm e validar
+watch(
+  editForm,
+  () => {
+    validateForm();
+  },
+  { deep: true, immediate: true }
+);
 
 // Busca com debounce
 const debouncedSearch = debounce(() => {
@@ -377,6 +395,7 @@ const openEditModal = (user) => {
     longitude: user.longitude || null,
   };
   editModal.value = true;
+  validateForm(); // Validar imediatamente ao abrir o modal
 };
 
 // Confirma exclusão
@@ -414,10 +433,7 @@ const submitForm = async () => {
         delete formData.longitude;
       }
 
-     
-
-      const response = await authStore.updateUser(formData);
-     
+      await authStore.updateUser(formData);
 
       if (authStore.user?.id === formData.id) {
         await authStore.fetchUser();
@@ -452,7 +468,6 @@ const deleteUser = async () => {
     deleting.value = false;
   }
 };
-
 
 // Carrega dados ao montar o componente
 onMounted(async () => {

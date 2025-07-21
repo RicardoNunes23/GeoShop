@@ -124,8 +124,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useProductStore } from '~/stores/products';
-import AppDataTable from '~/components/App/AppDataTable.vue';
-import AppActionButtons from '~/components/App/AppActionButtons.vue';
+import AppDataTable from '~/components/app/AppDataTable.vue';
+import AppActionButtons from '~/components/app/AppActionButtons.vue';
 
 const productStore = useProductStore();
 
