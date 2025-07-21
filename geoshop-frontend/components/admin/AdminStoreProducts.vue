@@ -1,9 +1,6 @@
 <template>
-  <v-container>
-    <h1 class="text-h4 mb-6">
-      <v-icon left>mdi-store</v-icon>
-      Produtos por Loja
-    </h1>
+  <div class="admin-container">
+    <h1><v-icon start>mdi-store</v-icon>Produtos por Loja</h1>
 
     <!-- Seletor de Loja -->
    
@@ -130,14 +127,14 @@
         <v-btn text v-bind="attrs" @click="snackbar.show = false">Fechar</v-btn>
       </template>
     </v-snackbar>
-  </v-container>
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 import { useRouter } from 'vue-router';
-import AppDataTable from '~/components/AppDataTable.vue';
+import AppDataTable from '~/components/App/AppDataTable.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -321,19 +318,26 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped>
-.v-data-table {
-  border-radius: 0;
-  border: none;
+<style lang="scss" scoped>
+
+.admin-container {
+  min-height: 100vh;
+  padding: 20px;
+  margin: 0;
+  width: 100%;
+  background: #fff;
+
+  h1 {
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
 }
 
-.v-pagination {
-  justify-content: center;
-}
 
-.v-card {
-  border-radius: 8px;
-}
+
 
 .v-list-item-title {
   font-size: 1rem;

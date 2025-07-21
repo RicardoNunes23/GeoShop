@@ -2,7 +2,7 @@
 <template>
   <v-container fluid class="pa-0">
     <!-- Contagem de itens visíveis -->
-    <v-chip v-if="showItemCount && items.length > 0" color="primary" class="mt-4">
+    <v-chip v-if="showItemCount && items.length > 0" color="primary" class="mb-2">
       Itens: {{ visibleItemsCount }}
     </v-chip>
     
@@ -46,7 +46,7 @@
       :custom-filter="customFilter"
       :show-select="showSelect"
       v-model="selectedItems"
-      :class="tableClass"
+     
       :items-per-page-options="[5, 10, 25, -1]"
       show-footer
       @update:page="updateVisibleItemsCount($event, itemsPerPage)"
@@ -107,10 +107,7 @@ const props = defineProps({
     type: Function,
     default: null,
   },
-  tableClass: {
-    type: String,
-    default: 'elevation-1',
-  },
+
   hideEmptyMessage: {
     type: Boolean,
     default: false,

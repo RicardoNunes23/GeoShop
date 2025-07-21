@@ -21,60 +21,69 @@
     </v-btn>
 
     <!-- Tabela com AppDataTable -->
-   <AppDataTable
-    :headers="filteredHeaders"
-    :items="storeProductStore.storeProducts"
-    :loading="storeProductStore.loading"
-    :search="tableSearch"
-    :custom-filter="customProductFilter"
-    searchable
-    show-item-count
-    table-class="no-border"
-  >
-    <template v-slot:item.product.image="{ item }">
-      <v-img
-        :src="imageUrl(item.product?.image)"
-        max-width="50"
-        max-height="50"
-        @error="onImageError(item)"
-        @click="openImageDialog(item)"
-        style="cursor: pointer;"
-      ></v-img>
-    </template>
-    <template v-slot:item.price="{ item }">
-      {{ formatPrice(item.price) }}
-    </template>
-    <template v-slot:item.bulk_price="{ item }">
-      {{ formatPrice(item.bulk_price) }}
-    </template>
-    <template v-slot:item.loyalty_price="{ item }">
-      {{ formatPrice(item.loyalty_price) }}
-    </template>
-    <template v-slot:item.bulk_min_quantity="{ item }">
-      {{ formatQuantity(item.bulk_min_quantity) }}
-    </template>
-    <template v-slot:item.is_active="{ item }">
-      <v-chip :color="item.is_active ? 'success' : 'error'" small>
-        {{ item.is_active ? 'Ativo' : 'Inativo' }}
-      </v-chip>
-    </template>
-    <template v-slot:actions="{ item }">
-      <AppActionButtons
-        :item="item"
-        :show-details="false"
-        @edit="openEditDialog"
-        @delete="() => confirmDelete(item.id)"
-      />
-    </template>
-  </AppDataTable>
+    <AppDataTable
+      :headers="filteredHeaders"
+      :items="storeProductStore.storeProducts"
+      :loading="storeProductStore.loading"
+      :search="tableSearch"
+      :custom-filter="customProductFilter"
+      searchable
+      show-item-count
+      table-class="no-border"
+    >
+      <template v-slot:item.product.image="{ item }">
+        <v-img
+          :src="imageUrl(item.product?.image)"
+          max-width="50"
+          max-height="50"
+          @error="onImageError(item)"
+          @click="openImageDialog(item)"
+          style="cursor: pointer;"
+        ></v-img>
+      </template>
+      <template v-slot:item.product.name="{ item }">
+        {{ (item.product.name) }}
+      </template>
+      <template v-slot:item.product.quantity="{ item }">
+        {{ formatQuantity(item.product.quantity, item.product.weight_unit) }}
+      </template>
+      <template v-slot:item.price="{ item }">
+        {{ formatPrice(item.price) }}
+      </template>
+      <template v-slot:item.bulk_price="{ item }">
+        {{ formatPrice(item.bulk_price) }}
+      </template>
+      <template v-slot:item.loyalty_price="{ item }">
+        {{ formatPrice(item.loyalty_price) }}
+      </template>
+      <template v-slot:item.bulk_min_quantity="{ item }">
+        {{ formatQuantity(item.bulk_min_quantity) }}
+      </template>
+      <template v-slot:item.is_active="{ item }">
+        <v-chip :color="item.is_active ? 'success' : 'error'" small>
+          {{ item.is_active ? 'Ativo' : 'Inativo' }}
+        </v-chip>
+      </template>
+      <template v-slot:item.actions="{ item }">
+        <AppActionButtons
+          :item="item"
+          :show-details="false"
+          @edit="openEditDialog"
+          @delete="() => confirmDelete(item.id)"
+        />
+      </template>
+    </AppDataTable>
 
     <!-- Diálogo para adicionar/editar produto -->
-    <v-dialog v-model="dialog" max-width="600px">
+    <v-dialog v-model="dialog" max-width="600px" @update:modelValue="console.log('formData.product_id:', formData.product_id)">
       <v-card>
         <v-card-title>
           {{ isEditing ? 'Editar Produto da Loja' : 'Adicionar Produto da Loja' }}
         </v-card-title>
         <v-card-text>
+          <p v-if="formData.product_id?.name">
+            <strong>Nome do Produto:</strong> {{ formData.product_id.name }}
+          </p>
           <v-form v-model="valid" ref="form">
             <v-autocomplete
               v-model="formData.product_id"
@@ -87,6 +96,7 @@
               clearable
               return-object
               auto-select-first
+              no-data-text="Nenhum produto disponível"
             >
               <template v-slot:item="{ props, item }">
                 <v-list-item v-bind="props" :title="null">
@@ -285,11 +295,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { reactive, ref, computed, onMounted } from 'vue';
 import { useStoreProductStore } from '~/stores/storeProducts';
 import { useAuthStore } from '~/stores/auth';
 import { useRouter } from 'vue-router';
-import AppDataTable from '~/components/AppDataTable.vue';
+import AppDataTable from '~/components/App/AppDataTable.vue';
 
 interface Product {
   id: number;
@@ -303,7 +313,7 @@ interface Product {
 
 interface StoreProduct {
   id: number;
-  product_id: number;
+  product_id?: number;
   product: Product;
   price: number | string;
   bulk_price: number | null;
@@ -379,7 +389,7 @@ const filteredHeaders = computed(() => {
   });
 });
 
-const formData = ref({
+const formData = reactive({
   id: null as number | null,
   product_id: null as number | null | { id: number },
   price: 0,
@@ -398,6 +408,8 @@ onMounted(async () => {
   }
   await storeProductStore.fetchStoreProducts();
   await storeProductStore.fetchProducts();
+  console.log('Produtos carregados:', storeProductStore.products);
+  console.log('StoreProducts carregados:', storeProductStore.storeProducts);
 });
 
 function customProductFilter(value: any, query: string, item: any): boolean {
@@ -425,9 +437,12 @@ function formatPrice(price: number | string | null): string {
   return `R$ ${numPrice.toFixed(2).replace('.', ',')}`;
 }
 
-function formatQuantity(quantity: number | null): string {
-  if (quantity === null || quantity === undefined) return 'N/A';
-  return quantity.toString();
+function formatQuantity(quantity: number | string | null, unit: string | null): string {
+  if (quantity === null || quantity === undefined) return '-';
+  const numericQuantity = Number(quantity);
+  const formattedValue = Math.floor(numericQuantity).toString();
+  const formattedUnit = unit && unit.toLowerCase() === 'l' ? 'L' : (unit || '').toLowerCase();
+  return formattedUnit ? `${formattedValue}${formattedUnit}` : formattedValue;
 }
 
 function onImageError(item: any) {
@@ -450,7 +465,7 @@ function openCreateDialog() {
     return;
   }
   isEditing.value = false;
-  formData.value = {
+  Object.assign(formData, {
     id: null,
     product_id: null,
     price: 0,
@@ -458,51 +473,84 @@ function openCreateDialog() {
     bulk_min_quantity: storeProfile.value?.use_bulk_pricing ? null : null,
     loyalty_price: storeProfile.value?.has_loyalty_card ? null : null,
     is_active: true,
-  };
+  });
   dialog.value = true;
 }
 
-function openEditDialog(item: StoreProduct) {
+async function openEditDialog(item: StoreProduct) {
   isEditing.value = true;
-  formData.value = {
+  console.log('Item recebido:', item);
+  if (!storeProductStore.products.length) {
+    await storeProductStore.fetchProducts();
+  }
+  console.log('Produtos disponíveis:', storeProductStore.products);
+  console.log('Procurando product_id:', item.product_id, 'ou product.id:', item.product?.id);
+  let selectedProduct: Product | undefined;
+  const productId = item.product_id ?? item.product?.id;
+  if (productId) {
+    selectedProduct = storeProductStore.products.find(
+      (product: Product) => product.id === productId
+    );
+  }
+  console.log('Produto selecionado:', selectedProduct);
+  Object.assign(formData, {
     id: item.id,
-    product_id: item.product_id,
+    product_id: selectedProduct || null,
     price: typeof item.price === 'string' ? parseFloat(item.price) : item.price,
     bulk_price: storeProfile.value?.use_bulk_pricing ? item.bulk_price : null,
-    bulk_min_quantity: storeProfile.value?.use_bulk_pricing
-      ? item.bulk_min_quantity
-      : null,
+    bulk_min_quantity: storeProfile.value?.use_bulk_pricing ? item.bulk_min_quantity : null,
     loyalty_price: storeProfile.value?.has_loyalty_card ? item.loyalty_price : null,
     is_active: item.is_active,
-  };
+  });
   dialog.value = true;
 }
 
 async function saveProduct() {
   if (!valid.value) return;
 
-  const productId = typeof formData.value.product_id === 'object' && formData.value.product_id
-    ? formData.value.product_id.id
-    : formData.value.product_id;
+  const productId = typeof formData.product_id === 'object' && formData.product_id
+    ? formData.product_id.id
+    : formData.product_id;
+
+  if (!productId) {
+    snackbarText.value = 'Nenhum produto selecionado.';
+    snackbarColor.value = 'error';
+    snackbar.value = true;
+    return;
+  }
+
+  // Garantir que storeProducts esteja atualizado
+  console.log('Buscando storeProducts antes da verificação de duplicatas');
+  await storeProductStore.fetchStoreProducts();
+  console.log('StoreProducts atualizados:', storeProductStore.storeProducts);
+
+  // Verificar duplicatas
+  const existingProduct = storeProductStore.storeProducts.find((p) => {
+    const existingProductId = p.product_id ?? p.product?.id;
+    return existingProductId === productId && (!isEditing.value || p.id !== formData.id);
+  });
+
+  if (existingProduct) {
+    snackbarText.value = 'Este produto já está cadastrado na loja.';
+    snackbarColor.value = 'error';
+    snackbar.value = true;
+    return;
+  }
 
   const data = {
     product_id: productId,
-    price: formData.value.price,
-    bulk_price: storeProfile.value?.use_bulk_pricing
-      ? formData.value.bulk_price
-      : null,
-    bulk_min_quantity: storeProfile.value?.use_bulk_pricing
-      ? formData.value.bulk_min_quantity
-      : null,
-    loyalty_price: storeProfile.value?.has_loyalty_card
-      ? formData.value.loyalty_price
-      : null,
-    is_active: formData.value.is_active,
+    price: formData.price,
+    bulk_price: storeProfile.value?.use_bulk_pricing ? formData.bulk_price : null,
+    bulk_min_quantity: storeProfile.value?.use_bulk_pricing ? formData.bulk_min_quantity : null,
+    loyalty_price: storeProfile.value?.has_loyalty_card ? formData.loyalty_price : null,
+    is_active: formData.is_active,
   };
 
+  console.log('Dados enviados para salvar:', data);
+
   try {
-    if (isEditing.value && formData.value.id) {
-      await storeProductStore.updateStoreProduct(formData.value.id, data);
+    if (isEditing.value && formData.id) {
+      await storeProductStore.updateStoreProduct(formData.id, data);
       snackbarText.value = 'Produto atualizado com sucesso!';
       snackbarColor.value = 'success';
     } else {

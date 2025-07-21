@@ -1,5 +1,6 @@
 from django.db import models
 from users.models import CustomUser
+from django.core.validators import MinValueValidator
 
 class Product(models.Model):
     PACKAGE_TYPES = (
@@ -33,10 +34,13 @@ class Product(models.Model):
     def __str__(self):
         return f"{self.name} - {self.quantity} - {self.weight_unit}"
 
+    class Meta:
+        ordering = ['name']
+
 class StoreProduct(models.Model):
     store = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='store_products', limit_choices_to={'user_type': 'store'})
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='store_products')
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
     bulk_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     bulk_min_quantity = models.PositiveIntegerField(blank=True, null=True)
     loyalty_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
@@ -46,6 +50,10 @@ class StoreProduct(models.Model):
 
     def __str__(self):
         return f"{self.store.username} - {self.product.name}"
+
+    class Meta:
+        unique_together = ('store', 'product')
+        ordering = ['product__name']
 
 class ClientCart(models.Model):
     client = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='carts', limit_choices_to={'user_type': 'client'})
@@ -58,7 +66,7 @@ class ClientCart(models.Model):
 
 class CartItem(models.Model):
     cart = models.ForeignKey(ClientCart, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)  # Mudei de StoreProduct para Product
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
     selected_store_product = models.ForeignKey(
         StoreProduct, 
@@ -75,7 +83,6 @@ class CartItem(models.Model):
         return f"{self.quantity}x {self.product.name} no carrinho {self.cart.id}"
 
     def save(self, *args, **kwargs):
-        # Encontra a melhor oferta para este produto
         store_products = StoreProduct.objects.filter(
             product=self.product,
             is_active=True
@@ -85,13 +92,11 @@ class CartItem(models.Model):
         best_price = None
         
         for sp in store_products:
-            # Calcula o preço considerando quantidade e fidelidade
             if self.quantity >= (sp.bulk_min_quantity or 0):
                 price = sp.bulk_price or sp.price
             else:
                 price = sp.price
             
-            # Se for a primeira oferta ou melhor que a atual
             if best_price is None or price < best_price:
                 best_price = price
                 best_offer = sp
@@ -102,7 +107,6 @@ class CartItem(models.Model):
         super().save(*args, **kwargs)
 
     def get_available_stores(self):
-        """Retorna todas as lojas que oferecem este produto com seus preços"""
         store_products = StoreProduct.objects.filter(
             product=self.product,
             is_active=True

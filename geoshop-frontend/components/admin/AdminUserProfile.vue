@@ -31,32 +31,33 @@
       <v-window v-model="activeTab" class="mt-4">
         <v-window-item v-for="tab in ['admin', 'store', 'client']" :key="tab" :value="tab">
           <AppDataTable
-      :headers="tab === 'store' ? storeHeaders : baseHeaders"
-      :items="filteredUsers"
-      :loading="loading"
-      :search="searchQuery"
-      :items-per-page="itemsPerPage"
-      v-model:page="page"
-      searchable
-      @update:page="handlePageChange"
-      @update:items-per-page="handleItemsPerPageChange"
-    >
-      <template v-slot:item.user_type="{ item }">
-        {{ formatUserType(item.user_type) }}
-      </template>
-      <template v-slot:item.active_plan="{ item }">
-        <span v-if="item.active_plan">{{ item.active_plan.name }}</span>
-        <span v-else>Nenhum</span>
-      </template>
-      <template v-slot:item.use_bulk_pricing="{ item }">
-        <v-icon v-if="item.use_bulk_pricing" left color="success">
-          mdi-check-circle-outline
-        </v-icon>
-        <v-icon v-else left color="error">
-          mdi-alpha-x-circle-outline
-        </v-icon>
-      </template>
-                <template v-slot:item.has_loyalty_card="{ item }">
+            :headers="tab === 'store' ? storeHeaders : baseHeaders"
+            :items="filteredUsers"
+            :loading="loading"
+            :search="searchQuery"
+            :items-per-page="itemsPerPage"
+            v-model:page="page"
+            :total-items="filteredUsers.length"
+            searchable
+            @update:page="handlePageChange"
+            @update:items-per-page="handleItemsPerPageChange"
+          >
+            <template v-slot:item.user_type="{ item }">
+              {{ formatUserType(item.user_type) }}
+            </template>
+            <template v-slot:item.active_plan="{ item }">
+              <span v-if="item.active_plan">{{ item.active_plan.name }}</span>
+              <span v-else>Nenhum</span>
+            </template>
+            <template v-slot:item.use_bulk_pricing="{ item }">
+              <v-icon v-if="item.use_bulk_pricing" left color="success">
+                mdi-check-circle-outline
+              </v-icon>
+              <v-icon v-else left color="error">
+                mdi-alpha-x-circle-outline
+              </v-icon>
+            </template>
+            <template v-slot:item.has_loyalty_card="{ item }">
               <v-icon v-if="item.has_loyalty_card" left color="success">
                 mdi-check-circle-outline
               </v-icon>
@@ -64,22 +65,20 @@
                 mdi-alpha-x-circle-outline
               </v-icon>
             </template>
-      <template v-slot:item.actions="{ item }">
-        <AppActionButtons
-          :item="item"
-          :show-details="tab === 'store'"
-          @details="openDetailsModal"
-          @edit="openEditModal"
-          @delete="confirmDeleteUser"
-        />
-      </template>
-    </AppDataTable>
-
-          <v-pagination v-model="page" :length="totalPages" :total-visible="7" class="mt-4"></v-pagination>
+            <template v-slot:item.actions="{ item }">
+              <AppActionButtons
+                :item="item"
+                :show-details="tab === 'store'"
+                @details="openDetailsModal"
+                @edit="openEditModal"
+                @delete="confirmDeleteUser"
+              />
+            </template>
+          </AppDataTable>
         </v-window-item>
       </v-window>
 
-      <!-- Modal de Detalhes -->
+      <!-- Modais (mantidos iguais) -->
       <v-dialog v-model="detailsModal" max-width="600">
         <v-card>
           <v-card-title class="text-h5 font-weight-bold text-primary">
@@ -221,13 +220,13 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from '#app';
 import { mask } from 'vue-the-mask'; 
 import { debounce } from 'lodash-es';
-import AppDataTable from '~/components/AppDataTable.vue';
-import { usePlanStore } from '~/stores/plans'; // Importar o store de planos
+import AppDataTable from '~/components/App/AppDataTable.vue';
+import { usePlanStore } from '~/stores/plans';
 
 const authStore = useAuthStore();
 const router = useRouter();
 
-// Variáveis reativas
+// Variáveis de estado
 const vMask = mask;
 const activeTab = ref('admin');
 const page = ref(1);
@@ -263,7 +262,7 @@ const editForm = ref({
 
 // Busca com debounce
 const debouncedSearch = debounce(() => {
-  page.value = 1;
+  page.value = 1; // Resetar para a primeira página ao buscar
 }, 500);
 
 // Filtra usuários
@@ -288,11 +287,6 @@ const filteredUsers = computed(() => {
   return users;
 });
 
-// Calcula total de páginas
-const totalPages = computed(() => {
-  return Math.ceil(filteredUsers.value.length / itemsPerPage.value);
-});
-
 // Manipuladores de paginação
 const handlePageChange = (newPage) => {
   page.value = newPage;
@@ -300,18 +294,8 @@ const handlePageChange = (newPage) => {
 
 const handleItemsPerPageChange = (newItemsPerPage) => {
   itemsPerPage.value = newItemsPerPage;
-  page.value = 1;
+  page.value = 1; // Resetar para a primeira página
 };
-
-// Validação do formulário
-const editFormValid = computed(() => {
-  return (
-    !!editForm.value.username &&
-    !!editForm.value.email &&
-    /.+@.+\..+/.test(editForm.value.email) &&
-    !!editForm.value.user_type
-  );
-});
 
 // Cabeçalhos para a tabela
 const baseHeaders = [
@@ -337,6 +321,7 @@ const loadUsers = async () => {
   try {
     loading.value = true;
     await authStore.fetchAllUsers();
+    page.value = 1; // Resetar paginação após carregar
   } catch (err) {
     error.value = 'Erro ao carregar lista de usuários';
     console.error('Erro ao carregar usuários:', err);

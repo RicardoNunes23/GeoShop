@@ -215,7 +215,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '~/stores/auth';
 import { useRouter } from 'vue-router';
 import { mask } from 'vue-the-mask';
-import AppDataTable from '~/components/AppDataTable.vue';
+import AppDataTable from '~/components/App/AppDataTable.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();

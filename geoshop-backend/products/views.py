@@ -1,9 +1,13 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, serializers  # Added serializers import
 from rest_framework.response import Response
 from .models import Product, StoreProduct, ClientCart, CartItem
 from .serializers import ProductSerializer, StoreProductSerializer, ClientCartSerializer, CartItemSerializer
 from users.models import CustomUser
 from django.shortcuts import get_object_or_404
+import logging
+
+# Configurar logger
+logger = logging.getLogger(__name__)
 
 class ProductListCreateView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
@@ -12,6 +16,7 @@ class ProductListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         if self.request.user.user_type != 'admin':
+            logger.warning(f"Usuário {self.request.user.username} tentou criar produto sem permissão de admin")
             raise permissions.PermissionDenied("Apenas administradores podem criar produtos.")
         serializer.save(admin=self.request.user)
 
@@ -22,11 +27,13 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
     def perform_update(self, serializer):
         if self.request.user.user_type != 'admin':
+            logger.warning(f"Usuário {self.request.user.username} tentou atualizar produto sem permissão de admin")
             raise permissions.PermissionDenied("Apenas administradores podem atualizar produtos.")
         serializer.save()
 
     def perform_destroy(self, instance):
         if self.request.user.user_type != 'admin':
+            logger.warning(f"Usuário {self.request.user.username} tentou excluir produto sem permissão de admin")
             raise permissions.PermissionDenied("Apenas administradores podem excluir produtos.")
         instance.delete()
 
@@ -45,17 +52,34 @@ class StoreProductListCreateView(generics.ListCreateAPIView):
                 return StoreProduct.objects.none()
         return StoreProduct.objects.all()
 
+    def create(self, request, *args, **kwargs):
+        logger.debug(f"Recebendo requisição POST com dados: {request.data}")
+        try:
+            serializer = self.get_serializer(data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            logger.info(f"StoreProduct criado com sucesso: {serializer.data}")
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except serializers.ValidationError as e:
+            logger.error(f"Erro de validação: {str(e)}")
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Erro inesperado ao criar StoreProduct: {str(e)}")
+            return Response({"detail": f"Erro ao criar produto: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
     def perform_create(self, serializer):
         if self.request.user.user_type != 'store':
+            logger.warning(f"Usuário {self.request.user.username} tentou criar StoreProduct sem permissão de loja")
             raise permissions.PermissionDenied("Apenas lojas podem adicionar produtos.")
         
-        # Verifica se a loja tem um plano ativo
         if not self.request.user.active_plan:
+            logger.warning(f"Usuário {self.request.user.username} tentou criar StoreProduct sem plano ativo")
             raise permissions.PermissionDenied("Nenhum plano ativo. Escolha um plano e conclua o pagamento primeiro.")
         
-        # Verifica o limite de produtos
         product_count = StoreProduct.objects.filter(store=self.request.user).count()
         if product_count >= self.request.user.active_plan.product_limit:
+            logger.warning(f"Usuário {self.request.user.username} atingiu limite de produtos: {product_count}")
             raise permissions.PermissionDenied(
                 f"Limite de {self.request.user.active_plan.product_limit} produtos atingido para o plano {self.request.user.active_plan.get_name_display()}."
             )
@@ -73,11 +97,13 @@ class StoreProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIVie
 
     def perform_update(self, serializer):
         if self.request.user.user_type != 'store':
+            logger.warning(f"Usuário {self.request.user.username} tentou atualizar StoreProduct sem permissão de loja")
             raise permissions.PermissionDenied("Apenas lojas podem atualizar seus produtos.")
         serializer.save()
 
     def perform_destroy(self, instance):
         if self.request.user.user_type != 'store' or instance.store != self.request.user:
+            logger.warning(f"Usuário {self.request.user.username} tentou excluir StoreProduct sem permissão")
             raise permissions.PermissionDenied("Apenas lojas podem excluir seus produtos.")
         instance.delete()
 
@@ -92,6 +118,7 @@ class ClientCartListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         if self.request.user.user_type != 'client':
+            logger.warning(f"Usuário {self.request.user.username} tentou criar carrinho sem permissão de cliente")
             raise permissions.PermissionDenied("Apenas clientes podem criar carrinhos.")
         serializer.save(client=self.request.user)
 
@@ -106,11 +133,13 @@ class ClientCartRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView)
 
     def perform_update(self, serializer):
         if self.request.user.user_type != 'client' or serializer.instance.client != self.request.user:
+            logger.warning(f"Usuário {self.request.user.username} tentou atualizar carrinho sem permissão")
             raise permissions.PermissionDenied("Apenas o dono do carrinho pode atualizá-lo.")
         serializer.save()
 
     def perform_destroy(self, instance):
         if self.request.user.user_type != 'client' or instance.client != self.request.user:
+            logger.warning(f"Usuário {self.request.user.username} tentou excluir carrinho sem permissão")
             raise permissions.PermissionDenied("Apenas o dono do carrinho pode excluí-lo.")
         instance.delete()
 
@@ -120,6 +149,7 @@ class CartItemCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         if self.request.user.user_type != 'client':
+            logger.warning(f"Usuário {self.request.user.username} tentou adicionar item ao carrinho sem permissão")
             raise permissions.PermissionDenied("Apenas clientes podem adicionar itens ao carrinho.")
         
         cart, created = ClientCart.objects.get_or_create(
@@ -140,11 +170,13 @@ class CartItemRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
     def perform_update(self, serializer):
         if self.request.user.user_type != 'client' or serializer.instance.cart.client != self.request.user:
+            logger.warning(f"Usuário {self.request.user.username} tentou atualizar item do carrinho sem permissão")
             raise permissions.PermissionDenied("Apenas o dono do carrinho pode atualizar itens.")
         serializer.save()
 
     def perform_destroy(self, instance):
         if self.request.user.user_type != 'client' or instance.cart.client != self.request.user:
+            logger.warning(f"Usuário {self.request.user.username} tentou excluir item do carrinho sem permissão")
             raise permissions.PermissionDenied("Apenas o dono do carrinho pode remover itens.")
         instance.delete()
 
@@ -163,6 +195,7 @@ class BestStoreForCartView(generics.RetrieveAPIView):
         best_store = serializer.get_best_store(instance)
         
         if not best_store:
+            logger.warning(f"Nenhuma loja encontrada para o carrinho {instance.id}")
             return Response({"detail": "Nenhuma loja encontrada para os itens no carrinho."}, 
                            status=status.HTTP_404_NOT_FOUND)
         
