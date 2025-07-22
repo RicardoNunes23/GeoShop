@@ -232,7 +232,7 @@ const router = useRouter();
 
 const profileKey = ref(0); // Chave para forçar re-renderização
 const profile = computed(() => {
-  console.log('Computed profile:', authStore.user); // Log para depuração
+ 
   return {
     username: authStore.user?.username || '',
     email: authStore.user?.email || '',
@@ -325,7 +325,7 @@ watch(
         use_bulk_pricing: newUser.use_bulk_pricing || false,
         has_loyalty_card: newUser.has_loyalty_card || false
       };
-      console.log('Watch disparado, editForm atualizado:', editForm.value); // Log para depuração
+     
     }
   },
   { immediate: true, deep: true }
@@ -381,7 +381,7 @@ async function updateProfile() {
       use_bulk_pricing: editForm.value.use_bulk_pricing,
       has_loyalty_card: editForm.value.has_loyalty_card
     };
-    console.log('Enviando dados para atualização:', formData); // Log para depuração
+ 
 
     await authStore.updateProfile(formData);
     await authStore.fetchProfile(); // Força a atualização do estado com os dados mais recentes do backend

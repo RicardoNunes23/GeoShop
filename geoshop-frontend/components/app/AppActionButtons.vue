@@ -1,16 +1,14 @@
-<!-- components/AppActionButtons.vue -->
 <template>
   <div class="d-flex align-center" :class="customClass">
     <!-- Botão de Visualização (Detalhes) -->
     <v-tooltip v-if="showDetails" bottom>
       <template v-slot:activator="{ on, attrs }">
         <v-btn
+          v-bind="attrs"
           :color="detailsColor"
           :small="small"
           class="mr-2"
-          v-bind="attrs"
-          v-on="on"
-          @click="$emit('details', item)"
+          v-on="{ ...on, click: () => $emit('details', item) }" <!-- Combina eventos -->
         >
           <v-icon :small="small">mdi-eye</v-icon>
           <span v-if="!iconOnly" class="ml-2">Detalhes</span>
@@ -23,12 +21,11 @@
     <v-tooltip v-if="showEdit" bottom>
       <template v-slot:activator="{ on, attrs }">
         <v-btn
+          v-bind="attrs"
           :color="editColor"
           :small="small"
           class="mr-2"
-          v-bind="attrs"
-          v-on="on"
-          @click="$emit('edit', item)"
+          v-on="{ ...on, click: () => $emit('edit', item) }"
         >
           <v-icon :small="small">mdi-pencil</v-icon>
           <span v-if="!iconOnly" class="ml-2">Editar</span>
@@ -41,11 +38,10 @@
     <v-tooltip v-if="showDelete" bottom>
       <template v-slot:activator="{ on, attrs }">
         <v-btn
+          v-bind="attrs"
           :color="deleteColor"
           :small="small"
-          v-bind="attrs"
-          v-on="on"
-          @click="$emit('delete', item)"
+          v-on="{ ...on, click: () => $emit('delete', item) }"
         >
           <v-icon :small="small">mdi-delete</v-icon>
           <span v-if="!iconOnly" class="ml-2">Excluir</span>

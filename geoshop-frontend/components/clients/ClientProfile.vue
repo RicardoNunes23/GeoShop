@@ -6,35 +6,20 @@
 
     <!-- Tabela com AppDataTable -->
     <div class="pa-4 mb-6">
-      <AppDataTable
-        :key="profileKey"
-        :items="[profile]"
-        :headers="headers"
-        :loading="loading"
-        hide-empty-message
-        :table-class="'no-border'"
-      >
+      <AppDataTable :key="profileKey" :items="[profile]" :headers="headers" :loading="loading" hide-empty-message
+        :table-class="'no-border'">
         <template v-slot:item.phone="{ item }">
           {{ formatPhone(item.phone) || 'Não informado' }}
         </template>
         <template v-slot:item.actions="{ item }">
-          <AppActionButtons
-            :item="item"
-            @details="openDetailsModal"
-            @edit="openEditModal"
-            @delete="confirmDeleteProfile"
-          />
+          <AppActionButtons :item="item" @details="openDetailsModal" @edit="openEditModal"
+            @delete="confirmDeleteProfile" />
         </template>
       </AppDataTable>
     </div>
 
-    <v-alert
-      v-if="error"
-      :type="error.includes('sucesso') ? 'success' : 'error'"
-      variant="tonal"
-      class="mt-4 mb-6"
-      dismissible
-    >
+    <v-alert v-if="error" :type="error.includes('sucesso') ? 'success' : 'error'" variant="tonal" class="mt-4 mb-6"
+      dismissible>
       {{ error }}
     </v-alert>
 
@@ -72,32 +57,16 @@
         <v-form @submit.prevent="updateProfile" ref="form">
           <v-row>
             <v-col cols="12" md="6">
-              <v-text-field
-                v-model="editForm.username"
-                label="Nome"
-                prepend-inner-icon="mdi-account"
-                outlined
-                :rules="[v => !!v || 'Nome é obrigatório']"
-              />
-              <v-text-field
-                v-model="editForm.email"
-                label="E-mail"
-                prepend-inner-icon="mdi-email"
-                type="email"
-                outlined
+              <v-text-field v-model="editForm.username" label="Nome" prepend-inner-icon="mdi-account" outlined
+                :rules="[v => !!v || 'Nome é obrigatório']" />
+              <v-text-field v-model="editForm.email" label="E-mail" prepend-inner-icon="mdi-email" type="email" outlined
                 :rules="[
                   v => !!v || 'E-mail é obrigatório',
                   v => /.+@.+\..+/.test(v) || 'E-mail inválido',
-                ]"
-              />
-              <v-text-field
-                v-model="editForm.phone"
-                label="Telefone"
-                prepend-inner-icon="mdi-phone"
-                v-mask="'+55 (##) #####-####'"
-                outlined
-                :rules="[v => !!v || 'Telefone é obrigatório', v => /^\+55 \(\d{2}\) \d{5}-\d{4}$/.test(v) || 'Telefone inválido']"
-              />
+                ]" />
+              <v-text-field v-model="editForm.phone" label="Telefone" prepend-inner-icon="mdi-phone"
+                v-mask="'+55 (##) #####-####'" outlined
+                :rules="[v => !!v || 'Telefone é obrigatório', v => /^\+55 \(\d{2}\) \d{5}-\d{4}$/.test(v) || 'Telefone inválido']" />
             </v-col>
           </v-row>
 
@@ -105,12 +74,7 @@
             <v-btn color="grey" @click="editModal = false">
               Cancelar
             </v-btn>
-            <v-btn
-              type="submit"
-              color="primary"
-              :loading="loading"
-              :disabled="!editFormValid"
-            >
+            <v-btn type="submit" color="primary" :loading="loading" :disabled="!editFormValid">
               <v-icon left>mdi-content-save</v-icon>
               Salvar Alterações
             </v-btn>
@@ -152,7 +116,6 @@ const router = useRouter();
 // Dados reativos
 const profileKey = ref(0); // Chave para forçar re-renderização
 const profile = computed(() => {
-  console.log('Computed profile:', authStore.user); // Log para depuração
   return {
     username: authStore.user?.username || '',
     email: authStore.user?.email || '',
@@ -214,7 +177,6 @@ watch(
         email: newUser.email,
         phone: formatPhone(newUser.phone) || ''
       };
-      console.log('Watch disparado, editForm atualizado:', editForm.value); // Log para depuração
     }
   },
   { immediate: true, deep: true }
@@ -259,10 +221,10 @@ async function updateProfile() {
       email: editForm.value.email,
       phone: cleanPhone
     };
-    console.log('Enviando dados para atualização:', formData); // Log para depuração
+
 
     await authStore.updateClientProfile(formData);
-    
+
     editModal.value = false;
     error.value = 'Perfil atualizado com sucesso!';
     profileKey.value++; // Força re-renderização da tabela

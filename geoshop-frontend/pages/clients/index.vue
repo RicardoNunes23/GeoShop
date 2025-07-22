@@ -13,8 +13,9 @@
 import { useAuthStore } from '~/stores/auth';
 import { useRoute, useRouter } from '#app';
 import { computed, onMounted } from 'vue';
-import ClientProfile from '~/components/client/ClientProfile.vue';
-import ClientProducts from '~/components/client/ClientProducts.vue';
+import ClientProfile from '~/components/clients/ClientProfile.vue';
+import ClientProducts from '~/components/clients/ClientProducts.vue';
+
 
 definePageMeta({
   middleware: ['auth'],
@@ -29,10 +30,12 @@ const componentsMap = {
   profile: ClientProfile,
   products: ClientProducts,
  
+ 
 };
 
 const currentComponent = computed(() => {
   const view = route.query.view || 'profile';
+
   return componentsMap[view] || ClientProfile;
 });
 

@@ -115,9 +115,8 @@
 import { useAuthStore } from '~/stores/auth'
 
 definePageMeta({
-  layout: 'auth', // Usa o layout sem sidebar
- 
-});
+  layout: 'default'
+})
 
 const authStore = useAuthStore()
 

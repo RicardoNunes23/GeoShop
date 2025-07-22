@@ -1,45 +1,39 @@
 <template>
   <v-container>
     <h1>Gerenciamento de Produtos da Loja</h1>
-    <v-alert
-      v-if="authStore.activePlan"
-      type="info"
-      variant="tonal"
-      class="mb-4"
-    >
+    <v-alert v-if="authStore.activePlan" type="info" variant="tonal" class="mb-4">
       Seu plano atual ({{ authStore.activePlan.description }}) permite até
       {{ authStore.activePlan.product_limit }} produtos. Você possui
       {{ storeProductStore.storeProducts.length }} produtos cadastrados.
     </v-alert>
-    <v-btn
-      color="primary"
-      @click="openCreateDialog"
-      :disabled="!canAddProduct"
-      class="mb-4"
-    >
-      Adicionar Produto
-    </v-btn>
+    
+    <div class="d-flex align-center mb-4">
+      <v-btn color="primary" @click="openCreateDialog" :disabled="!canAddProduct">
+        Adicionar Produto
+      </v-btn>
+      <v-btn v-if="selectedItems.length > 0" color="error" class="ml-2" @click="confirmDeleteSelected">
+        Excluir Selecionados ({{ selectedItems.length }})
+      </v-btn>
+    </div>
 
-    <!-- Tabela com AppDataTable -->
-    <AppDataTable
-      :headers="filteredHeaders"
-      :items="storeProductStore.storeProducts"
+    <!-- Tabela com AppDataTable - Atualizada com paginação -->
+    <AppDataTable 
+      :headers="filteredHeaders" 
+      :items="filteredProducts"
       :loading="storeProductStore.loading"
-      :search="tableSearch"
-      :custom-filter="customProductFilter"
+      :search="search"
+      :items-per-page="itemsPerPage"
+      v-model:page="page"
+      :show-select="true"
+      v-model:selected="selectedItems"
       searchable
-      show-item-count
-      table-class="no-border"
+      @update:page="handlePageChange"
+      @update:items-per-page="handleItemsPerPageChange"
+      @update:search="search = $event"
     >
       <template v-slot:item.product.image="{ item }">
-        <v-img
-          :src="imageUrl(item.product?.image)"
-          max-width="50"
-          max-height="50"
-          @error="onImageError(item)"
-          @click="openImageDialog(item)"
-          style="cursor: pointer;"
-        ></v-img>
+        <v-img :src="imageUrl(item.product?.image)" max-width="50" max-height="50" @error="onImageError(item)"
+          @click="openImageDialog(item)" style="cursor: pointer;"></v-img>
       </template>
       <template v-slot:item.product.name="{ item }">
         {{ (item.product.name) }}
@@ -65,17 +59,13 @@
         </v-chip>
       </template>
       <template v-slot:item.actions="{ item }">
-        <AppActionButtons
-          :item="item"
-          :show-details="false"
-          @edit="openEditDialog"
-          @delete="() => confirmDelete(item.id)"
-        />
+        <AppActionButtons :item="item" :show-details="false" @edit="openEditDialog"
+          @delete="() => confirmDelete(item.id)" />
       </template>
     </AppDataTable>
 
     <!-- Diálogo para adicionar/editar produto -->
-    <v-dialog v-model="dialog" max-width="600px" @update:modelValue="console.log('formData.product_id:', formData.product_id)">
+    <v-dialog v-model="dialog" max-width="600px">
       <v-card>
         <v-card-title>
           {{ isEditing ? 'Editar Produto da Loja' : 'Adicionar Produto da Loja' }}
@@ -85,107 +75,58 @@
             <strong>Nome do Produto:</strong> {{ formData.product_id.name }}
           </p>
           <v-form v-model="valid" ref="form">
-            <v-autocomplete
-              v-model="formData.product_id"
-              :items="storeProductStore.products"
-              item-value="id"
-              item-title="name"
-              label="Produto"
-              :rules="[v => !!v || 'Produto é obrigatório']"
-              required
-              clearable
-              return-object
-              auto-select-first
-              no-data-text="Nenhum produto disponível"
-            >
+            <v-autocomplete v-model="formData.product_id" :items="storeProductStore.products" item-value="id"
+              item-title="name" label="Produto" :rules="[v => !!v || 'Produto é obrigatório']" required clearable
+              return-object auto-select-first no-data-text="Nenhum produto disponível">
               <template v-slot:item="{ props, item }">
                 <v-list-item v-bind="props" :title="null">
                   <template v-slot:prepend>
-                    <v-img
-                      :src="imageUrl(item.raw.image)"
-                      width="40"
-                      height="40"
-                      class="mr-2"
-                      cover
-                    ></v-img>
+                    <v-img :src="imageUrl(item.raw.image)" width="40" height="40" class="mr-2" cover></v-img>
                   </template>
                   <v-list-item-title class="font-weight-bold">
                     {{ item.raw.name }} - {{ item.raw.quantity }}
                     {{ item.raw.weight_unit }}
                   </v-list-item-title>
                   <v-list-item-subtitle>
-                    <span class="d-block"
-                      >Peso: {{ item.raw.quantity }}
-                      {{ item.raw.weight_unit }}</span
-                    >
-                    <span v-if="item.raw.package_type" class="d-block"
-                      >Embalagem: {{ item.raw.package_type }}</span
-                    >
+                    <span class="d-block">Peso: {{ item.raw.quantity }}
+                      {{ item.raw.weight_unit }}</span>
+                    <span v-if="item.raw.package_type" class="d-block">Embalagem: {{ item.raw.package_type }}</span>
                   </v-list-item-subtitle>
                 </v-list-item>
               </template>
               <template v-slot:selection="{ item }">
                 <div class="d-flex align-center">
-                  <v-img
-                    :src="imageUrl(item.raw.image)"
-                    width="30"
-                    height="30"
-                    class="mr-2"
-                    cover
-                  ></v-img>
-                  <span
-                    >{{ item.raw.name }} - {{ item.raw.quantity }}
-                    {{ item.raw.weight_unit }}</span
-                  >
+                  <v-img :src="imageUrl(item.raw.image)" width="30" height="30" class="mr-2" cover></v-img>
+                  <span>{{ item.raw.name }} - {{ item.raw.quantity }}
+                    {{ item.raw.weight_unit }}</span>
                 </div>
               </template>
             </v-autocomplete>
-            <v-text-field
-              v-model.number="formData.price"
-              label="Preço"
-              type="number"
-              step="0.01"
-              :rules="[v => v > 0 || 'Preço deve ser maior que zero']"
-              required
-            ></v-text-field>
+            <v-text-field v-model.number="formData.price" label="Preço" type="number" step="0.01"
+              :rules="[v => v > 0 || 'Preço deve ser maior que zero']" required></v-text-field>
             <template v-if="storeProfile?.use_bulk_pricing">
-              <v-text-field
-                v-model.number="formData.bulk_price"
-                label="Preço por Quantidade"
-                type="number"
-                step="0.01"
+              <v-text-field v-model.number="formData.bulk_price" label="Preço por Quantidade" type="number" step="0.01"
                 :rules="[
                   v =>
                     v === null ||
                     v >= 0 ||
                     'Preço por quantidade não pode ser negativo',
-                ]"
-              ></v-text-field>
-              <v-text-field
-                v-model.number="formData.bulk_min_quantity"
-                label="Quantidade Mínima"
-                type="number"
-                :rules="[
-                  v =>
-                    v === null ||
-                    v >= 0 ||
-                    'Quantidade mínima não pode ser negativa',
-                ]"
-              ></v-text-field>
+                ]"></v-text-field>
+              <v-text-field v-model.number="formData.bulk_min_quantity" label="Quantidade Mínima" type="number" :rules="[
+                v =>
+                  v === null ||
+                  v >= 0 ||
+                  'Quantidade mínima não pode ser negativa',
+              ]"></v-text-field>
             </template>
             <template v-if="storeProfile?.has_loyalty_card">
-              <v-text-field
-                v-model.number="formData.loyalty_price"
-                label="Preço por Fidelidade"
-                type="number"
-                step="0.01"
-                :rules="[
+              <v-text-field v-model.number="formData.loyalty_price" label="Preço por Fidelidade" type="number"
+                step="0.01" :rules="[
                   v =>
                     v === null ||
                     v >= 0 ||
                     'Preço por fidelidade não pode ser negativo',
-                ]"
-              ></v-text-field>
+                ]"></v-text-field>
             </template>
             <v-checkbox v-model="formData.is_active" label="Ativo"></v-checkbox>
           </v-form>
@@ -193,12 +134,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="secondary" @click="dialog = false">Cancelar</v-btn>
-          <v-btn
-            color="primary"
-            @click="saveProduct"
-            :disabled="!valid"
-            :loading="storeProductStore.loading"
-          >
+          <v-btn color="primary" @click="saveProduct" :disabled="!valid" :loading="storeProductStore.loading">
             Salvar
           </v-btn>
         </v-card-actions>
@@ -210,12 +146,7 @@
       <v-card>
         <v-card-title>Detalhes do Produto</v-card-title>
         <v-card-text>
-          <v-img
-            :src="imageUrl(selectedProduct?.product?.image)"
-            max-height="300"
-            contain
-            class="mb-4"
-          ></v-img>
+          <v-img :src="imageUrl(selectedProduct?.product?.image)" max-height="300" contain class="mb-4"></v-img>
           <v-row>
             <v-col cols="12">
               <p>
@@ -269,15 +200,19 @@
     <v-dialog v-model="deleteDialog" max-width="400px">
       <v-card>
         <v-card-title>Confirmar Exclusão</v-card-title>
-        <v-card-text>Deseja realmente excluir este produto da loja?</v-card-text>
+        <v-card-text>
+          {{ selectedItems.length > 1 ?
+            `Deseja realmente excluir ${selectedItems.length} produtos selecionados?` :
+            selectedItems.length === 1 ?
+              `Deseja realmente excluir o produto "${getProductName(selectedItems[0])}"?` :
+              deleteId ? `Deseja realmente excluir o produto "${getProductName(deleteId)}"?` :
+                'Deseja realmente excluir este produto?'
+          }}
+        </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="secondary" @click="deleteDialog = false">Cancelar</v-btn>
-          <v-btn
-            color="error"
-            @click="deleteProduct"
-            :loading="storeProductStore.loading"
-          >
+          <v-btn color="error" @click="deleteSelectedProducts" :loading="storeProductStore.loading">
             Excluir
           </v-btn>
         </v-card-actions>
@@ -322,14 +257,11 @@ interface StoreProduct {
   is_active: boolean;
 }
 
-definePageMeta({
-  middleware: ['auth'],
-});
-
 const storeProductStore = useStoreProductStore();
 const authStore = useAuthStore();
 const router = useRouter();
 
+// Estados
 const dialog = ref(false);
 const deleteDialog = ref(false);
 const imageDialog = ref(false);
@@ -340,8 +272,13 @@ const snackbar = ref(false);
 const snackbarText = ref('');
 const snackbarColor = ref('success');
 const selectedProduct = ref<Partial<StoreProduct> & { product?: Partial<Product> }>({});
-const tableSearch = ref('');
+const search = ref('');
 const storeProfile = ref<any>(null);
+const selectedItems = ref<number[]>([]);
+
+// Paginação
+const page = ref(1);
+const itemsPerPage = ref(10);
 
 const baseUrl = ref('http://localhost:8000');
 
@@ -389,6 +326,46 @@ const filteredHeaders = computed(() => {
   });
 });
 
+// Produtos filtrados
+const filteredProducts = computed(() => {
+  if (!search.value) return storeProductStore.storeProducts;
+  
+  const searchTerm = search.value.toLowerCase();
+  return storeProductStore.storeProducts.filter(product => {
+    const priceStr = product.price ? formatPrice(product.price).toLowerCase() : '';
+    const bulkPriceStr = product.bulk_price ? formatPrice(product.bulk_price).toLowerCase() : '';
+    const loyaltyPriceStr = product.loyalty_price ? formatPrice(product.loyalty_price).toLowerCase() : '';
+    const quantityStr = product.product?.quantity ? 
+      `${product.product.quantity}${product.product.weight_unit || ''}`.toLowerCase() : '';
+    
+    return (
+      (product.product?.name?.toLowerCase().includes(searchTerm)) ||
+      (product.product?.package_type?.toLowerCase().includes(searchTerm)) ||
+      (product.product?.description?.toLowerCase().includes(searchTerm)) ||
+      (priceStr.includes(searchTerm)) ||
+      (bulkPriceStr.includes(searchTerm)) ||
+      (loyaltyPriceStr.includes(searchTerm)) ||
+      (quantityStr.includes(searchTerm))
+    );
+  });
+});
+
+// Calcula total de páginas
+const totalPages = computed(() => {
+  if (itemsPerPage.value === -1) return 1;
+  return Math.ceil(filteredProducts.value.length / itemsPerPage.value);
+});
+
+// Manipuladores de paginação
+const handlePageChange = (newPage: number) => {
+  page.value = newPage;
+};
+
+const handleItemsPerPageChange = (newItemsPerPage: number) => {
+  itemsPerPage.value = newItemsPerPage;
+  page.value = 1; // Resetar para a primeira página
+};
+
 const formData = reactive({
   id: null as number | null,
   product_id: null as number | null | { id: number },
@@ -408,27 +385,11 @@ onMounted(async () => {
   }
   await storeProductStore.fetchStoreProducts();
   await storeProductStore.fetchProducts();
-  console.log('Produtos carregados:', storeProductStore.products);
-  console.log('StoreProducts carregados:', storeProductStore.storeProducts);
 });
 
-function customProductFilter(value: any, query: string, item: any): boolean {
-  if (!query) return true;
-  const normalizedQuery = query
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-  const combinedFields = [
-    item.product?.name,
-    item.product?.quantity,
-    item.product?.weight_unit,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-  return combinedFields.includes(normalizedQuery);
+function getProductName(id: number) {
+  const product = storeProductStore.storeProducts.find(p => p.id === id);
+  return product?.product?.name || 'Produto desconhecido';
 }
 
 function formatPrice(price: number | string | null): string {
@@ -437,7 +398,7 @@ function formatPrice(price: number | string | null): string {
   return `R$ ${numPrice.toFixed(2).replace('.', ',')}`;
 }
 
-function formatQuantity(quantity: number | string | null, unit: string | null): string {
+function formatQuantity(quantity: number | string | null, unit: string | null = null): string {
   if (quantity === null || quantity === undefined) return '-';
   const numericQuantity = Number(quantity);
   const formattedValue = Math.floor(numericQuantity).toString();
@@ -479,12 +440,11 @@ function openCreateDialog() {
 
 async function openEditDialog(item: StoreProduct) {
   isEditing.value = true;
-  console.log('Item recebido:', item);
+
   if (!storeProductStore.products.length) {
     await storeProductStore.fetchProducts();
   }
-  console.log('Produtos disponíveis:', storeProductStore.products);
-  console.log('Procurando product_id:', item.product_id, 'ou product.id:', item.product?.id);
+
   let selectedProduct: Product | undefined;
   const productId = item.product_id ?? item.product?.id;
   if (productId) {
@@ -492,7 +452,7 @@ async function openEditDialog(item: StoreProduct) {
       (product: Product) => product.id === productId
     );
   }
-  console.log('Produto selecionado:', selectedProduct);
+
   Object.assign(formData, {
     id: item.id,
     product_id: selectedProduct || null,
@@ -519,10 +479,7 @@ async function saveProduct() {
     return;
   }
 
-  // Garantir que storeProducts esteja atualizado
-  console.log('Buscando storeProducts antes da verificação de duplicatas');
   await storeProductStore.fetchStoreProducts();
-  console.log('StoreProducts atualizados:', storeProductStore.storeProducts);
 
   // Verificar duplicatas
   const existingProduct = storeProductStore.storeProducts.find((p) => {
@@ -546,8 +503,6 @@ async function saveProduct() {
     is_active: formData.is_active,
   };
 
-  console.log('Dados enviados para salvar:', data);
-
   try {
     if (isEditing.value && formData.id) {
       await storeProductStore.updateStoreProduct(formData.id, data);
@@ -568,27 +523,46 @@ async function saveProduct() {
   snackbar.value = true;
 }
 
-async function confirmDelete(id: number) {
+function confirmDelete(id: number) {
   deleteId.value = id;
+  selectedItems.value = [];
   deleteDialog.value = true;
 }
 
-async function deleteProduct() {
-  if (!deleteId.value) return;
+function confirmDeleteSelected() {
+  deleteId.value = null;
+  deleteDialog.value = true;
+}
 
+async function deleteSelectedProducts() {
   try {
-    await storeProductStore.deleteStoreProduct(deleteId.value);
-    snackbarText.value = 'Produto excluído com sucesso!';
+    if (deleteId.value) {
+      await storeProductStore.deleteStoreProduct(deleteId.value);
+      snackbarText.value = 'Produto excluído com sucesso!';
+    } else if (selectedItems.value.length > 0) {
+      const validItems = selectedItems.value
+        .map(id => storeProductStore.storeProducts.find(product => product.id === id))
+        .filter(item => item && item.id !== undefined && item.id !== null);
+      if (validItems.length === 0) {
+        throw new Error('Nenhum item válido selecionado para exclusão');
+      }
+      await Promise.all(validItems.map(item => storeProductStore.deleteStoreProduct(item.id)));
+      snackbarText.value = `${validItems.length} produtos excluídos com sucesso!`;
+      selectedItems.value = [];
+    } else {
+      throw new Error('Nenhum produto selecionado para exclusão');
+    }
     snackbarColor.value = 'success';
-    deleteDialog.value = false;
-    deleteId.value = null;
+    await storeProductStore.fetchStoreProducts();
+    page.value = 1;
   } catch (err) {
-    snackbarText.value =
-      storeProductStore.error || 'Erro ao excluir produto da loja';
+    console.error('Erro ao excluir produto(s):', err);
+    snackbarText.value = storeProductStore.error || `Erro ao excluir produto(s): ${err.message}`;
     snackbarColor.value = 'error';
-    console.error('Erro ao excluir produto:', err);
   }
   snackbar.value = true;
+  deleteDialog.value = false;
+  deleteId.value = null;
 }
 </script>
 
@@ -600,5 +574,22 @@ async function deleteProduct() {
 
 .v-list-item__title {
   white-space: normal !important;
+}
+
+.v-data-table {
+  border-radius: 0;
+  border: none;
+}
+
+.v-pagination {
+  justify-content: center;
+}
+
+.v-chip {
+  font-weight: 500;
+}
+
+.v-btn {
+  text-transform: none;
 }
 </style>

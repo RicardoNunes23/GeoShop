@@ -87,7 +87,6 @@ export const useAuthStore = defineStore('auth', {
           { headers: { Authorization: `Bearer ${this.token}` } }
         );
 
-        console.log('Resposta fetchClientProfile:', response.data); // Log para depuração
         this.user = { ...this.user, ...response.data };
         this.users = [this.user];
         localStorage.setItem('user', JSON.stringify(this.user));
@@ -112,12 +111,12 @@ export const useAuthStore = defineStore('auth', {
           { headers: { Authorization: `Bearer ${this.token}` } }
         );
 
-        console.log('Resposta updateClientProfile:', response.data); // Log para depuração
+    
         // Acesse response.data.data e garanta reatividade
         this.user = { ...this.user, ...response.data.data };
         this.users = [this.user];
         localStorage.setItem('user', JSON.stringify(this.user));
-        console.log('Estado user atualizado:', this.user); // Log para verificar estado
+       
         return this.user;
       } catch (error) {
         console.error('Erro ao atualizar perfil do cliente:', error);
