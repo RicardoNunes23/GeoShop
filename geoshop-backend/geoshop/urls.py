@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from users.views import (
     ClientRegisterView, StoreRegisterView, StoreProfileView,
-    CustomTokenObtainPairView, UserListView, UserDetailView
+    CustomTokenObtainPairView, UserListView, UserDetailView, ClientProfileView
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.conf import settings
@@ -31,6 +31,7 @@ urlpatterns = [
     path('api/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/store/profile/', StoreProfileView.as_view(), name='store_profile'),
+    path('api/client/profile/', ClientProfileView.as_view(), name='client_profile'),
     path('api/users/', UserListView.as_view(), name='user-list'),
     path('api/users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('api/', include('products.urls')),

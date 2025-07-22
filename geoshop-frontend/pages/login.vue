@@ -139,7 +139,7 @@ const handleLogin = async () => {
 
     switch (authStore.user?.user_type) {
       case 'client':
-        await navigateTo('/clients');
+        await navigateTo('/clients?view=profile');
         break;
       case 'store':
         await navigateTo('/store?view=profile');

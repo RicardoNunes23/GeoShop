@@ -79,7 +79,7 @@ const handleLogin = async () => {
     // Redirecionamento condicional
     switch(authStore.user?.user_type) {
       case 'client':
-        await navigateTo('/clients')
+        await navigateTo('/client')
         break
       case 'store':
         await navigateTo('/store')

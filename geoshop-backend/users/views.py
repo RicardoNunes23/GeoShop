@@ -72,6 +72,34 @@ class StoreRegisterView(APIView):
             serializer.save()
             return Response({"message": "Loja registrada com sucesso"}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class ClientProfileView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if request.user.user_type != 'client':
+            return Response({"error": "Acesso negado"}, status=status.HTTP_403_FORBIDDEN)
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    def put(self, request):
+        if request.user.user_type != 'client':
+            return Response({"error": "Acesso negado"}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = UserSerializer(
+            request.user, 
+            data=request.data, 
+            partial=True,
+            fields=['username', 'email', 'phone']  # Campos que clientes podem editar
+        )
+    
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "message": "Perfil atualizado com sucesso",
+                "data": serializer.data
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class StoreProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]

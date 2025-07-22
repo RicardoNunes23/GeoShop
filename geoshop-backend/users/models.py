@@ -46,6 +46,5 @@ class CustomUser(AbstractUser):
         if self.user_type != 'store':
             self.use_bulk_pricing = False
             self.has_loyalty_card = False
-            self.phone = None
             self.active_plan = None
         super().save(*args, **kwargs)

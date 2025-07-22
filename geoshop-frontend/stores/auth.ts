@@ -78,6 +78,53 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async fetchClientProfile() {
+      if (!this.isClient) throw new Error('Não autorizado');
+
+      try {
+        const response = await axios.get(
+          `${useRuntimeConfig().public.apiBase}/client/profile/`,
+          { headers: { Authorization: `Bearer ${this.token}` } }
+        );
+
+        console.log('Resposta fetchClientProfile:', response.data); // Log para depuração
+        this.user = { ...this.user, ...response.data };
+        this.users = [this.user];
+        localStorage.setItem('user', JSON.stringify(this.user));
+        return this.user;
+      } catch (error) {
+        console.error('Erro ao buscar perfil do cliente:', error);
+        throw error;
+      }
+    },
+
+    async updateClientProfile(profileData: {
+      username?: string;
+      email?: string;
+      phone?: string;
+    }) {
+      if (!this.isClient) throw new Error('Não autorizado');
+
+      try {
+        const response = await axios.put(
+          `${useRuntimeConfig().public.apiBase}/client/profile/`,
+          profileData,
+          { headers: { Authorization: `Bearer ${this.token}` } }
+        );
+
+        console.log('Resposta updateClientProfile:', response.data); // Log para depuração
+        // Acesse response.data.data e garanta reatividade
+        this.user = { ...this.user, ...response.data.data };
+        this.users = [this.user];
+        localStorage.setItem('user', JSON.stringify(this.user));
+        console.log('Estado user atualizado:', this.user); // Log para verificar estado
+        return this.user;
+      } catch (error) {
+        console.error('Erro ao atualizar perfil do cliente:', error);
+        throw error;
+      }
+    },
+
     async fetchProfile() {
       if (!this.token || !this.isStore) throw new Error('Não autorizado');
 

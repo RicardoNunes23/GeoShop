@@ -45,7 +45,7 @@
                 </template>
                 <v-list-item-title>{{ getUserTypeText(authStore.user.user_type) }}</v-list-item-title>
               </v-list-item>
-              <v-list-item @click="navigateTo(authStore.user.user_type === 'store' ? '/store?view=profile' : '/admin')">
+              <v-list-item @click="navigateToProfile">
                 <template v-slot:prepend>
                   <v-icon class="mr-3">mdi-account-cog</v-icon>
                 </template>
@@ -112,7 +112,7 @@ const drawer = ref(true);
 const sidebarItems = computed(() => {
   if (authStore.user?.user_type === 'admin') {
     return [
-      { title: 'Usuários', icon: 'mdi-account-group', route: '/admin?view=profile' },
+      { title: 'Usuários', icon: 'mdi-account-group', route: '/admin?view=users' },
       { title: 'Produtos', icon: 'mdi-cart', route: '/admin?view=products' },
       { title: 'Planos', icon: 'mdi-clipboard-list', route: '/admin?view=plans' },
       { title: 'Listas', icon: 'mdi-plus', route: '/admin?view=storeProducts' },
@@ -123,8 +123,17 @@ const sidebarItems = computed(() => {
       { title: 'Meu cadastro', icon: 'mdi-account-outline', route: '/store?view=profile' },
       { title: 'Produtos', icon: 'mdi-cart', route: '/store?view=products' },
       { title: 'Pedidos', icon: 'mdi-clipboard-list', route: '/store?view=orders' },
-      { title: 'Listas de Itens', icon: 'mdi-plus', route: '/store?view=orders' },
+      { title: 'Clientes', icon: 'mdi-account-group', route: '/store?view=clients' },
       { title: 'Configurações', icon: 'mdi-cog', route: '/store?view=settings' },
+    ];
+  } else if (authStore.user?.user_type === 'client') {
+    return [
+      { title: 'Meu perfil', icon: 'mdi-account-outline', route: '/client?view=profile' },
+      { title: 'Lojas', icon: 'mdi-store', route: '/client?view=stores' },
+      { title: 'Produtos', icon: 'mdi-cart', route: '/client?view=products' },
+      { title: 'Meus pedidos', icon: 'mdi-clipboard-list', route: '/client?view=orders' },
+      { title: 'Favoritos', icon: 'mdi-heart', route: '/client?view=favorites' },
+      { title: 'Configurações', icon: 'mdi-cog', route: '/client?view=settings' },
     ];
   }
   return [];
@@ -132,12 +141,27 @@ const sidebarItems = computed(() => {
 
 // Determina se o item está ativo
 function isActive(item) {
-  if (authStore.user?.user_type === 'store') {
-    const currentView = route.query.view || 'profile';
-    return route.path === '/store' && item.route.includes(`view=${currentView}`);
+  const currentView = route.query.view || 'profile';
+  if (route.path.startsWith('/admin') && item.route.startsWith('/admin')) {
+    return item.route.includes(`view=${currentView}`);
+  } else if (route.path.startsWith('/store') && item.route.startsWith('/store')) {
+    return item.route.includes(`view=${currentView}`);
+  } else if (route.path.startsWith('/client') && item.route.startsWith('/client')) {
+    return item.route.includes(`view=${currentView}`);
   }
   return route.path === item.route;
 }
+
+// Navega para o perfil correto baseado no tipo de usuário
+const navigateToProfile = () => {
+  if (authStore.user?.user_type === 'admin') {
+    navigateTo('/admin?view=profile');
+  } else if (authStore.user?.user_type === 'store') {
+    navigateTo('/store?view=profile');
+  } else if (authStore.user?.user_type === 'client') {
+    navigateTo('/client?view=profile');
+  }
+};
 
 // Função de logout
 const handleLogout = async () => {
@@ -161,6 +185,7 @@ const getUserTypeText = (type: string) => {
 </script>
 
 <style scoped>
+/* Seus estilos existentes podem permanecer os mesmos */
 .modern-app-bar {
   border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
   backdrop-filter: blur(8px);
