@@ -1,4 +1,5 @@
 from rest_framework import generics, permissions, status, serializers
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Product, StoreProduct
 from .serializers import ProductSerializer, StoreProductSerializer
@@ -105,3 +106,112 @@ class StoreProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIVie
             logger.warning(f"Usuário {self.request.user.username} tentou excluir StoreProduct sem permissão")
             raise permissions.PermissionDenied("Apenas lojas podem excluir seus produtos.")
         instance.delete()
+
+class ClientProductSearchView(generics.ListAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.user_type != 'client':
+            logger.warning(f"Usuário {self.request.user.username} tentou buscar produtos sem permissão de cliente")
+            raise permissions.PermissionDenied("Apenas clientes podem buscar produtos.")
+        
+        queryset = Product.objects.all()
+        search_query = self.request.query_params.get('q', None)
+        if search_query:
+            queryset = queryset.filter(name__icontains=search_query)
+            logger.debug(f"Filtrando produtos com query: {search_query}")
+        return queryset.order_by('name')
+
+class ClientStoreProductListView(generics.ListAPIView):
+    serializer_class = StoreProductSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.user_type != 'client':
+            logger.warning(f"Usuário {self.request.user.username} tentou listar StoreProducts sem permissão de cliente")
+            raise permissions.PermissionDenied("Apenas clientes podem listar produtos de lojas.")
+        
+        product_id = self.kwargs.get('product_id')
+        if not product_id:
+            logger.error("ID do produto não fornecido")
+            raise serializers.ValidationError("ID do produto é obrigatório.")
+        
+        if not Product.objects.filter(id=product_id).exists():
+            logger.error(f"Produto com ID {product_id} não encontrado")
+            raise serializers.ValidationError("Produto não encontrado.")
+        
+        queryset = StoreProduct.objects.filter(product_id=product_id, is_active=True)
+        return queryset.order_by('price')
+
+class ClientShoppingListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        logger.debug(f"Recebida requisição para lista de compras: {request.data}")
+        if self.request.user.user_type != 'client':
+            logger.error(f"Usuário {self.request.user.username} não é cliente")
+            return Response({"detail": "Apenas clientes podem acessar esta funcionalidade"}, status=status.HTTP_403_FORBIDDEN)
+
+        items = request.data.get('items', [])
+        if not items:
+            logger.error("Nenhum item fornecido na lista de compras")
+            return Response({"detail": "A lista de compras não pode estar vazia"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Agrupar StoreProducts por loja
+            store_totals = {}
+            for item in items:
+                product_id = item.get('product_id')
+                quantity = item.get('quantity')
+                if not product_id or not isinstance(quantity, (int, float)) or quantity <= 0:
+                    logger.error(f"Item inválido: product_id={product_id}, quantity={quantity}")
+                    return Response({"detail": "Todos os itens devem ter product_id e quantity válidos"}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Buscar StoreProducts ativos para o produto
+                store_products = StoreProduct.objects.filter(
+                    product_id=product_id,
+                    is_active=True
+                ).select_related('store', 'product')
+
+                for store_product in store_products:
+                    store_id = store_product.store_id
+                    if store_id not in store_totals:
+                        store_totals[store_id] = {
+                            'store_username': store_product.store.username,
+                            'total_price': 0,
+                            'items': []
+                        }
+
+                    # Calcular preço do item
+                    price = store_product.price
+                    if store_product.bulk_price and store_product.bulk_min_quantity and quantity >= store_product.bulk_min_quantity:
+                        price = store_product.bulk_price
+                    elif store_product.loyalty_price and request.user.has_loyalty_card:
+                        price = store_product.loyalty_price
+
+                    item_total = price * quantity
+                    store_totals[store_id]['total_price'] += item_total
+                    store_totals[store_id]['items'].append({
+                        'store_product': StoreProductSerializer(store_product).data,
+                        'quantity': quantity,
+                        'item_total': item_total
+                    })
+
+            # Converter para lista e ordenar por preço total
+            result = [
+                {
+                    'store_id': store_id,
+                    'store_username': data['store_username'],
+                    'total_price': data['total_price'],
+                    'items': data['items']
+                }
+                for store_id, data in store_totals.items()
+            ]
+            result.sort(key=lambda x: x['total_price'])
+
+            logger.info(f"Lista de compras processada com sucesso: {len(result)} lojas encontradas")
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Erro ao processar lista de compras: {str(e)}")
+            return Response({"detail": f"Erro ao processar lista de compras: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

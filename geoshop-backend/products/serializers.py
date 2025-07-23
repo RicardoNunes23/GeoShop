@@ -19,11 +19,12 @@ class StoreProductSerializer(serializers.ModelSerializer):
         source='product', 
         write_only=True
     )
-    
+    store_username = serializers.CharField(source='store.username', read_only=True)
+
     class Meta:
         model = StoreProduct
-        fields = ['id', 'product', 'product_id', 'price', 'bulk_price', 'bulk_min_quantity', 'loyalty_price', 'is_active']
-        read_only_fields = ['store', 'product']
+        fields = ['id', 'store', 'store_username', 'product', 'product_id', 'price', 'bulk_price', 'bulk_min_quantity', 'loyalty_price', 'is_active']
+        read_only_fields = ['store', 'product', 'store_username']
 
     def validate_product_id(self, value):
         logger.debug(f"Validando product_id: {value.id}")

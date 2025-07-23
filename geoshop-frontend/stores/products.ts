@@ -5,6 +5,7 @@ import { useAuthStore } from './auth';
 export const useProductStore = defineStore('product', () => {
   const storeProducts = ref<StoreProduct[]>([]);
   const products = ref<Product[]>([]);
+  const shoppingListResults = ref<ShoppingListResult[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
   const { public: { apiBase } } = useRuntimeConfig();
@@ -27,6 +28,7 @@ export const useProductStore = defineStore('product', () => {
   interface StoreProduct {
     id: number;
     store: number;
+    store_username: string;
     product: Product;
     price: number;
     bulk_price: number | null;
@@ -35,6 +37,18 @@ export const useProductStore = defineStore('product', () => {
     is_active: boolean;
     created_at: string;
     updated_at: string;
+  }
+
+  // Interface para ShoppingListResult
+  interface ShoppingListResult {
+    store_id: number;
+    store_username: string;
+    total_price: number;
+    items: {
+      store_product: StoreProduct;
+      quantity: number;
+      item_total: number;
+    }[];
   }
 
   // Função para buscar todos os produtos
@@ -56,6 +70,79 @@ export const useProductStore = defineStore('product', () => {
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao buscar produtos';
       console.error('Erro ao buscar produtos:', err);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  // Função para buscar produtos (clientes)
+  async function fetchClientProductSearch(query: string) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const authStore = useAuthStore();
+      if (!authStore.token || !authStore.isClient) {
+        throw new Error('Apenas clientes podem buscar produtos');
+      }
+      const response = await $fetch(`${apiBase}/client/products/search/?q=${encodeURIComponent(query)}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authStore.token}`,
+        },
+      });
+      products.value = response as Product[];
+    } catch (err: any) {
+      error.value = err.data?.detail || 'Erro ao buscar produtos';
+      console.error('Erro ao buscar produtos:', err);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  // Função para buscar StoreProducts de um produto específico (clientes)
+  async function fetchClientStoreProducts(productId: number) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const authStore = useAuthStore();
+      if (!authStore.token || !authStore.isClient) {
+        throw new Error('Apenas clientes podem listar produtos de lojas');
+      }
+      const response = await $fetch(`${apiBase}/client/store-products/${productId}/`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authStore.token}`,
+        },
+      });
+      storeProducts.value = response as StoreProduct[];
+    } catch (err: any) {
+      error.value = err.data?.detail || 'Erro ao buscar produtos da loja';
+      console.error('Erro ao buscar produtos da loja:', err);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  // Função para buscar preços totais da lista de compras
+  async function fetchShoppingList(items: { product_id: number; quantity: number }[]) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const authStore = useAuthStore();
+      if (!authStore.token || !authStore.isClient) {
+        throw new Error('Apenas clientes podem buscar listas de compras');
+      }
+      const response = await $fetch(`${apiBase}/client/shopping-list/`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authStore.token}`,
+        },
+        body: { items },
+      });
+      shoppingListResults.value = response as ShoppingListResult[];
+    } catch (err: any) {
+      error.value = err.data?.detail || 'Erro ao buscar lista de compras';
+      console.error('Erro ao buscar lista de compras:', err);
     } finally {
       loading.value = false;
     }
@@ -243,9 +330,13 @@ export const useProductStore = defineStore('product', () => {
   return {
     storeProducts,
     products,
+    shoppingListResults,
     loading,
     error,
     fetchProducts,
+    fetchClientProductSearch,
+    fetchClientStoreProducts,
+    fetchShoppingList,
     createProduct,
     updateProduct,
     deleteProduct,
