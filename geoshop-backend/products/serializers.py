@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, StoreProduct, ClientCart, CartItem
+from .models import Product, StoreProduct
 from users.models import CustomUser
 import logging
 
@@ -71,68 +71,9 @@ class StoreProductSerializer(serializers.ModelSerializer):
             logger.error("Contexto de request ou usuário autenticado não disponível")
             raise serializers.ValidationError("Usuário não autenticado ou contexto inválido")
         try:
-            store_product = StoreProduct.objects.create(**validated_data)  # Removed store=store
+            store_product = StoreProduct.objects.create(**validated_data)
             logger.info(f"StoreProduct criado com sucesso: ID {store_product.id}")
             return store_product
         except Exception as e:
             logger.error(f"Erro ao criar StoreProduct: {str(e)}")
             raise serializers.ValidationError(f"Erro ao criar produto: {str(e)}")
-
-class CartItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
-    product_id = serializers.PrimaryKeyRelatedField(
-        queryset=Product.objects.all(), 
-        source='product', 
-        write_only=True
-    )
-    available_stores = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = CartItem
-        fields = [
-            'id', 'cart', 'product', 'product_id', 'quantity',
-            'selected_price', 'selected_store_product', 'available_stores',
-            'created_at', 'updated_at'
-        ]
-        read_only_fields = [
-            'selected_price', 'selected_store_product', 'available_stores'
-        ]
-    
-    def get_available_stores(self, obj):
-        return obj.get_available_stores()
-
-class ClientCartSerializer(serializers.ModelSerializer):
-    items = CartItemSerializer(many=True, read_only=True)
-    total_price = serializers.SerializerMethodField()
-    best_store = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ClientCart
-        fields = '__all__'
-        read_only_fields = ['client', 'is_completed']
-
-    def get_total_price(self, obj):
-        return sum(item.selected_price * item.quantity for item in obj.items.all())
-
-    def get_best_store(self, obj):
-        from collections import defaultdict
-        store_totals = defaultdict(float)
-        store_items = defaultdict(int)
-        
-        for item in obj.items.all():
-            store = item.store_product.store
-            store_totals[store.id] += item.selected_price * item.quantity
-            store_items[store.id] += 1
-        
-        if not store_totals:
-            return None
-        
-        best_store_id = min(store_totals, key=lambda k: (store_totals[k], -store_items[k]))
-        best_store = CustomUser.objects.get(id=best_store_id)
-        
-        return {
-            'id': best_store.id,
-            'username': best_store.username,
-            'total_price': store_totals[best_store_id],
-            'items_count': store_items[best_store_id]
-        }

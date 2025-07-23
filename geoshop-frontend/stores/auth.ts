@@ -111,8 +111,6 @@ export const useAuthStore = defineStore('auth', {
           { headers: { Authorization: `Bearer ${this.token}` } }
         );
 
-    
-        // Acesse response.data.data e garanta reatividade
         this.user = { ...this.user, ...response.data.data };
         this.users = [this.user];
         localStorage.setItem('user', JSON.stringify(this.user));

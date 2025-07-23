@@ -1,9 +1,8 @@
-from rest_framework import generics, permissions, status, serializers  # Added serializers import
+from rest_framework import generics, permissions, status, serializers
 from rest_framework.response import Response
-from .models import Product, StoreProduct, ClientCart, CartItem
-from .serializers import ProductSerializer, StoreProductSerializer, ClientCartSerializer, CartItemSerializer
+from .models import Product, StoreProduct
+from .serializers import ProductSerializer, StoreProductSerializer
 from users.models import CustomUser
-from django.shortcuts import get_object_or_404
 import logging
 
 # Configurar logger
@@ -106,97 +105,3 @@ class StoreProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIVie
             logger.warning(f"Usuário {self.request.user.username} tentou excluir StoreProduct sem permissão")
             raise permissions.PermissionDenied("Apenas lojas podem excluir seus produtos.")
         instance.delete()
-
-class ClientCartListCreateView(generics.ListCreateAPIView):
-    serializer_class = ClientCartSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        if self.request.user.user_type == 'client':
-            return ClientCart.objects.filter(client=self.request.user)
-        return ClientCart.objects.none()
-
-    def perform_create(self, serializer):
-        if self.request.user.user_type != 'client':
-            logger.warning(f"Usuário {self.request.user.username} tentou criar carrinho sem permissão de cliente")
-            raise permissions.PermissionDenied("Apenas clientes podem criar carrinhos.")
-        serializer.save(client=self.request.user)
-
-class ClientCartRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = ClientCartSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        if self.request.user.user_type == 'client':
-            return ClientCart.objects.filter(client=self.request.user)
-        return ClientCart.objects.none()
-
-    def perform_update(self, serializer):
-        if self.request.user.user_type != 'client' or serializer.instance.client != self.request.user:
-            logger.warning(f"Usuário {self.request.user.username} tentou atualizar carrinho sem permissão")
-            raise permissions.PermissionDenied("Apenas o dono do carrinho pode atualizá-lo.")
-        serializer.save()
-
-    def perform_destroy(self, instance):
-        if self.request.user.user_type != 'client' or instance.client != self.request.user:
-            logger.warning(f"Usuário {self.request.user.username} tentou excluir carrinho sem permissão")
-            raise permissions.PermissionDenied("Apenas o dono do carrinho pode excluí-lo.")
-        instance.delete()
-
-class CartItemCreateView(generics.CreateAPIView):
-    serializer_class = CartItemSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def perform_create(self, serializer):
-        if self.request.user.user_type != 'client':
-            logger.warning(f"Usuário {self.request.user.username} tentou adicionar item ao carrinho sem permissão")
-            raise permissions.PermissionDenied("Apenas clientes podem adicionar itens ao carrinho.")
-        
-        cart, created = ClientCart.objects.get_or_create(
-            client=self.request.user,
-            is_completed=False
-        )
-        
-        serializer.save(cart=cart)
-
-class CartItemRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = CartItemSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        if self.request.user.user_type == 'client':
-            return CartItem.objects.filter(cart__client=self.request.user)
-        return CartItem.objects.none()
-
-    def perform_update(self, serializer):
-        if self.request.user.user_type != 'client' or serializer.instance.cart.client != self.request.user:
-            logger.warning(f"Usuário {self.request.user.username} tentou atualizar item do carrinho sem permissão")
-            raise permissions.PermissionDenied("Apenas o dono do carrinho pode atualizar itens.")
-        serializer.save()
-
-    def perform_destroy(self, instance):
-        if self.request.user.user_type != 'client' or instance.cart.client != self.request.user:
-            logger.warning(f"Usuário {self.request.user.username} tentou excluir item do carrinho sem permissão")
-            raise permissions.PermissionDenied("Apenas o dono do carrinho pode remover itens.")
-        instance.delete()
-
-class BestStoreForCartView(generics.RetrieveAPIView):
-    serializer_class = ClientCartSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        if self.request.user.user_type == 'client':
-            return ClientCart.objects.filter(client=self.request.user)
-        return ClientCart.objects.none()
-
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        best_store = serializer.get_best_store(instance)
-        
-        if not best_store:
-            logger.warning(f"Nenhuma loja encontrada para o carrinho {instance.id}")
-            return Response({"detail": "Nenhuma loja encontrada para os itens no carrinho."}, 
-                           status=status.HTTP_404_NOT_FOUND)
-        
-        return Response(best_store)
