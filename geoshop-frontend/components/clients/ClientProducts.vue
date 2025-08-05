@@ -2,7 +2,14 @@
   <v-container>
     <h1 class="text-h4 mb-4">Pesquisa de Produtos</h1>
 
-    <!-- Verificação de usuário cliente -->
+    <VueLeaflet 
+      :stores="storeMarkers" 
+      :userLocation="userLocation"
+      @marker-click="onStoreMarkerClick"
+      class="mb-4"
+      v-if="showMap"
+    />
+
     <v-alert v-if="!authStore.isClient" type="error" variant="tonal" class="mb-4">
       Apenas clientes podem acessar esta funcionalidade.
     </v-alert>
@@ -22,6 +29,7 @@
         no-data-text="Nenhum produto encontrado"
         @update:search="debouncedSearch"
         class="mb-4"
+        :key="autocompleteKey"
       >
         <template v-slot:item="{ props, item }">
           <v-list-item v-bind="props" :title="null">
@@ -57,8 +65,8 @@
       <v-btn
         color="secondary"
         class="mt-2"
-        :disabled="productStore.storeProducts.length === 0"
-        @click="clearSingleProductSearch"
+        :disabled="productStore.storeProducts.length === 0 && productStore.shoppingListResults.length === 0"
+        @click="clearSearch"
       >
         Limpar Pesquisa
       </v-btn>
@@ -148,7 +156,6 @@
               </v-col>
             </v-row>
 
-            <!-- Botão para buscar preços (duplicado para consistência visual, pode remover um se preferir) -->
             <v-btn
               color="primary"
               class="mt-4"
@@ -166,13 +173,13 @@
         {{ productStore.error }}
       </v-alert>
 
-      <!-- Tabela de resultados da lista de compras ou produto único -->
+      <!-- Tabela de resultados -->
       <v-data-table
         v-if="productStore.storeProducts.length > 0 || productStore.shoppingListResults.length > 0"
         :headers="storeHeaders"
         :items="sortedStores"
         :loading="productStore.loading"
-        class="elevation-1"
+        class="elevation-1 mt-4"
         :items-per-page="itemsPerPage"
         v-model:page="page"
         show-expand
@@ -182,7 +189,18 @@
         <template v-slot:top>
           <v-toolbar flat>
             <v-toolbar-title>Lojas com Melhores Preços</v-toolbar-title>
+            <v-spacer></v-spacer>
+            <v-btn
+              color="primary"
+              @click="showMap = !showMap"
+              class="mr-2"
+            >
+              {{ showMap ? 'Ocultar Mapa' : 'Mostrar Mapa' }}
+            </v-btn>
           </v-toolbar>
+        </template>
+        <template v-slot:item.store_username="{ item }">
+          <a href="#" @click.prevent="focusOnStore(item)">{{ item.store_username }}</a>
         </template>
         <template v-slot:item.total_price="{ item }">
           {{ formatPrice(item.total_price) }}
@@ -196,7 +214,14 @@
                 hide-default-footer
               >
                 <template v-slot:item.store_product.product.image="{ item }">
-                  <v-img :src="imageUrl(item.store_product.product.image)" max-width="50" max-height="50" @error="onImageError(item.store_product)" @click="openImageDialog(item.store_product)" style="cursor: pointer;"></v-img>
+                  <v-img 
+                    :src="imageUrl(item.store_product.product.image)" 
+                    max-width="50" 
+                    max-height="50" 
+                    @error="onImageError(item.store_product)" 
+                    @click="openImageDialog(item.store_product)" 
+                    style="cursor: pointer;"
+                  ></v-img>
                 </template>
                 <template v-slot:item.store_product.product.name="{ item }">
                   {{ item.store_product.product.name }}
@@ -233,17 +258,20 @@
         </template>
       </v-data-table>
 
-      <!-- Mensagem para quando não há resultados -->
       <v-alert v-else-if="searched && !productStore.loading" type="info" variant="tonal" class="mt-4">
         Nenhuma loja encontrada para o produto ou lista de compras.
       </v-alert>
 
-      <!-- Diálogo para visualizar imagem e detalhes -->
       <v-dialog v-model="imageDialog" max-width="600px">
         <v-card>
           <v-card-title>Detalhes do Produto</v-card-title>
           <v-card-text>
-            <v-img :src="imageUrl(selectedStoreProduct?.product?.image)" max-height="300" contain class="mb-4"></v-img>
+            <v-img 
+              :src="imageUrl(selectedStoreProduct?.product?.image)" 
+              max-height="300" 
+              contain 
+              class="mb-4"
+            ></v-img>
             <v-row>
               <v-col cols="12">
                 <p><strong>Nome:</strong> {{ selectedStoreProduct?.product?.name || 'N/A' }}</p>
@@ -266,7 +294,6 @@
         </v-card>
       </v-dialog>
 
-      <!-- Snackbar -->
       <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000">
         {{ snackbarText }}
         <template v-slot:action="{ attrs }">
@@ -278,9 +305,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useProductStore } from '~/stores/products';
 import { useAuthStore } from '~/stores/auth';
+import { useGeolocation } from '@vueuse/core';
 import { debounce } from 'lodash';
 import { useRouter } from 'vue-router';
 
@@ -309,6 +337,8 @@ interface StoreProduct {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  store_latitude?: number | null;
+  store_longitude?: number | null;
 }
 
 interface ShoppingListResult {
@@ -320,14 +350,16 @@ interface ShoppingListResult {
     quantity: number;
     item_total: number;
   }[];
+  store_latitude?: number | null;
+  store_longitude?: number | null;
 }
 
 const productStore = useProductStore();
 const authStore = useAuthStore();
 const router = useRouter();
+const { coords } = useGeolocation();
 
 const selectedProduct = ref<Product | null>(null);
-const quantity = ref<number>(1);
 const isShoppingListEnabled = ref(false);
 const shoppingListDialog = ref(false);
 const imageDialog = ref(false);
@@ -340,16 +372,17 @@ const itemsPerPage = ref(10);
 const baseUrl = ref('http://localhost:8000');
 const shoppingListItems = ref<{ product: Product | null; quantity: number | null }[]>([{ product: null, quantity: null }]);
 const searched = ref(false);
+const showMap = ref(false);
+const userLocation = ref<[number, number] | null>(null);
+const autocompleteKey = ref(0);
 
-// Cabeçalhos da tabela de lojas
 const storeHeaders = [
   { title: 'Loja', key: 'store_username' },
-  
-  { title: 'Itens Encontrados na Loja', key: 'store_item_count', sortable: true },
+  { title: 'Itens Encontrados', key: 'store_item_count', sortable: true },
   { title: 'Preço Total', key: 'total_price', sortable: true },
+  { title: 'Distância', key: 'distance', sortable: true },
 ];
 
-// Cabeçalhos da tabela de itens (expansão)
 const itemHeaders = [
   { title: 'Imagem', key: 'store_product.product.image', sortable: false },
   { title: 'Produto', key: 'store_product.product.name' },
@@ -363,7 +396,6 @@ const itemHeaders = [
   { title: 'Ativo', key: 'store_product.is_active' },
 ];
 
-// Função para formatar URLs de imagens
 const imageUrl = computed(() => {
   return (image: string | undefined) => {
     if (!image) return '/placeholder.png';
@@ -375,86 +407,297 @@ const imageUrl = computed(() => {
   };
 });
 
-// Função para ordenar lojas por quantidade de itens e preço
+const storeMarkers = computed(() => {
+  if (!productStore.storeProducts.length && !productStore.shoppingListResults.length) {
+    console.log('Nenhum dado em storeProducts ou shoppingListResults');
+    return [];
+  }
+
+  const stores = productStore.shoppingListResults.length > 0 
+    ? productStore.shoppingListResults
+    : productStore.storeProducts.map(sp => ({
+        store_id: sp.store,
+        store_username: sp.store_username,
+        total_price: sp.price,
+        items: [{ store_product: sp, quantity: 1, item_total: sp.price }],
+        store_latitude: sp.store_latitude,
+        store_longitude: sp.store_longitude
+      }));
+
+  console.log('Stores processados:', stores);
+
+  // Calcular o número total de produtos solicitados na lista de compras
+  const requestedItemsCount = productStore.shoppingListResults.length > 0
+    ? shoppingListItems.value.filter(item => item.product && item.quantity && item.quantity > 0).length
+    : 1;
+
+  // Calcular preços mínimo e máximo entre lojas com todos os produtos solicitados
+  const completeStores = stores.filter(store => store.items.length === requestedItemsCount);
+  const prices = completeStores.length > 0
+    ? completeStores.map(store => store.total_price).filter(price => price !== null && price !== undefined)
+    : stores.map(store => store.total_price).filter(price => price !== null && price !== undefined);
+  const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+  const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+
+  const markers = stores
+    .map(store => {
+      const authStoreUser = authStore.users.find(
+        user => user.id === store.store_id && user.user_type === 'store'
+      );
+      const hasValidCoords = 
+        (authStoreUser?.latitude && authStoreUser?.longitude) || 
+        (store.store_latitude !== null && store.store_latitude !== undefined && 
+         store.store_longitude !== null && store.store_longitude !== undefined);
+
+      console.log(`Loja ${store.store_username}:`, {
+        hasValidCoords,
+        authStoreUserCoords: authStoreUser ? { latitude: authStoreUser.latitude, longitude: authStoreUser.longitude } : null,
+        storeCoords: { store_latitude: store.store_latitude, store_longitude: store.store_longitude }
+      });
+
+      const lat = authStoreUser?.latitude ?? store.store_latitude;
+      const lng = authStoreUser?.longitude ?? store.store_longitude;
+
+      if (!hasValidCoords) {
+        console.warn(`Loja ${store.store_username} não possui coordenadas válidas`, {
+          authStoreUser,
+          productStoreData: store
+        });
+        return null;
+      }
+
+      let distance = null;
+      if (userLocation.value && lat !== null && lng !== null) {
+        distance = calculateDistance(
+          userLocation.value[0], 
+          userLocation.value[1],
+          lat,
+          lng
+        );
+      }
+
+      return {
+        id: store.store_id || store.items[0]?.store_product?.store,
+        name: store.store_username,
+        latLng: [lat, lng] as [number, number],
+        total_price: formatPrice(store.total_price),
+        items_count: store.items?.length || 1,
+        distance: distance,
+        iconUrl: getMarkerIcon(store.total_price, store.items.length, requestedItemsCount, minPrice, maxPrice),
+        hasValidCoords
+      };
+    })
+    .filter(store => store !== null);
+
+  console.log('Marcadores gerados:', markers);
+  return markers;
+});
+
 const sortedStores = computed(() => {
-  // Quantidade solicitada pelo cliente (soma das quantidades da lista de compras)
   const clientRequestedCount = shoppingListItems.value
     .filter(item => item.product && item.quantity && item.quantity > 0)
     .reduce((sum, item) => sum + (item.quantity || 0), 0);
 
   const items = productStore.shoppingListResults.length > 0
-    ? productStore.shoppingListResults.map(result => ({
-        ...result,
-        client_requested_count: clientRequestedCount, // Quantidade total que o cliente quer comprar
-        store_item_count: result.items.length, // Número de itens da lista que a loja tem
-      }))
-    : productStore.storeProducts.map(sp => ({
-        store_username: sp.store_username,
-        total_price: sp.price,
-        items: [{ store_product: sp, quantity: 1, item_total: sp.price }],
-        client_requested_count: 1, // Para pesquisa única, quantidade é 1
-        store_item_count: 1, // Para pesquisa única, assume 1 item
-      }));
+    ? productStore.shoppingListResults.map(result => {
+        let distance = null;
+        if (userLocation.value && result.store_latitude && result.store_longitude) {
+          distance = calculateDistance(
+            userLocation.value[0],
+            userLocation.value[1],
+            result.store_latitude,
+            result.store_longitude
+          );
+        }
+
+        return {
+          ...result,
+          client_requested_count: clientRequestedCount,
+          store_item_count: result.items.length,
+          distance: distance
+        };
+      })
+    : productStore.storeProducts.map(sp => {
+        let distance = null;
+        if (userLocation.value && sp.store_latitude && sp.store_longitude) {
+          distance = calculateDistance(
+            userLocation.value[0],
+            userLocation.value[1],
+            sp.store_latitude,
+            sp.store_longitude
+          );
+        }
+
+        return {
+          store_username: sp.store_username,
+          total_price: sp.price,
+          items: [{ store_product: sp, quantity: 1, item_total: sp.price }],
+          client_requested_count: 1,
+          store_item_count: 1,
+          distance: distance,
+          store_latitude: sp.store_latitude,
+          store_longitude: sp.store_longitude
+        };
+      });
 
   return items.sort((a, b) => {
-    const countDiff = b.store_item_count - a.store_item_count; // Prioriza lojas com mais itens encontrados
+    // Priorizar lojas com mais itens correspondentes
+    const countDiff = b.store_item_count - a.store_item_count;
     if (countDiff !== 0) return countDiff;
-    return a.total_price - b.total_price; // Em caso de empate, menor preço
+    // Se o número de itens for igual, ordenar por preço
+    return a.total_price - b.total_price;
   });
 });
 
-// Função de busca com debounce
 const debouncedSearch = debounce(async (search: string) => {
   if (search.trim()) {
     await productStore.fetchClientProductSearch(search);
   } else {
-    await productStore.fetchClientProductSearch(''); // Garante que a lista inicial seja carregada
+    await productStore.fetchClientProductSearch('');
   }
 }, 500);
 
-// Função para alternar a lista de compras
-function toggleShoppingList() {
-  if (isShoppingListEnabled.value && !shoppingListDialog.value) {
-    shoppingListDialog.value = true;
-    if (productStore.products.length === 0) {
-      productStore.fetchClientProductSearch(''); // Carrega produtos se ainda não carregados
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Raio da Terra em km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return parseFloat((R * c).toFixed(2));
+}
+
+function getMarkerIcon(price: number | undefined, itemsCount: number, requestedItemsCount: number, minPrice: number, maxPrice: number): string {
+  if (!price) return 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png';
+
+  console.log(`getMarkerIcon: price=${price}, itemsCount=${itemsCount}, requestedItemsCount=${requestedItemsCount}, minPrice=${minPrice}, maxPrice=${maxPrice}`);
+
+  // Para pesquisa de produto único (requestedItemsCount === 1), manter a lógica baseada apenas no preço
+  if (requestedItemsCount === 1) {
+    if (minPrice === maxPrice) {
+      return 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png';
     }
-  } else if (!isShoppingListEnabled.value) {
-    shoppingListDialog.value = false;
-    shoppingListItems.value = [{ product: null, quantity: null }];
-    searched.value = false;
-    productStore.shoppingListResults = [];
+    const priceRange = maxPrice - minPrice;
+    const cheapThreshold = minPrice + priceRange * 0.33;
+    const expensiveThreshold = minPrice + priceRange * 0.66;
+    if (price <= cheapThreshold) {
+      return 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png';
+    } else if (price >= expensiveThreshold) {
+      return 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png';
+    } else {
+      return 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png';
+    }
+  }
+
+  // Para lista de compras, priorizar lojas com todos os produtos solicitados
+  if (itemsCount === requestedItemsCount) {
+    if (minPrice === maxPrice) {
+      return 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png';
+    }
+    const priceRange = maxPrice - minPrice;
+    const cheapThreshold = minPrice + priceRange * 0.33;
+    const expensiveThreshold = minPrice + priceRange * 0.66;
+    if (price <= cheapThreshold) {
+      return 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png';
+    } else if (price >= expensiveThreshold) {
+      return 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png';
+    } else {
+      return 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png';
+    }
+  } else {
+    return 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png';
   }
 }
 
-// Função para buscar preços de um único produto
 async function searchSingleProductPrices() {
   if (!selectedProduct.value) return;
 
   try {
     await productStore.fetchClientStoreProducts(selectedProduct.value.id);
     searched.value = true;
-    snackbarText.value = 'Preços buscados com sucesso!';
-    snackbarColor.value = 'success';
-    snackbar.value = true;
+    showMap.value = true;
+    showSuccess('Preços buscados com sucesso!');
   } catch (err: any) {
-    snackbarText.value = err.data?.detail || 'Erro ao buscar preços. Tente novamente.';
-    snackbarColor.value = 'error';
-    snackbar.value = true;
+    showError(err.data?.detail || 'Erro ao buscar preços. Tente novamente.');
   }
 }
 
-// Função para limpar a pesquisa de um único produto
-function clearSingleProductSearch() {
-  selectedProduct.value = null;
-  productStore.storeProducts = [];
-  searched.value = false;
-  snackbarText.value = 'Pesquisa limpa!';
-  snackbarColor.value = 'info';
-  snackbar.value = true;
+async function searchShoppingList() {
+  const validItems = shoppingListItems.value.filter(item => item.product && item.quantity && item.quantity > 0);
+  if (validItems.length === 0) return;
+
+  const items = validItems.map(item => ({
+    product_id: item.product!.id,
+    quantity: item.quantity!,
+  }));
+
+  try {
+    await productStore.fetchShoppingList(items);
+    searched.value = true;
+    showMap.value = true;
+    shoppingListDialog.value = false;
+    showSuccess('Lista de compras processada com sucesso!');
+  } catch (err: any) {
+    showError(err.data?.detail || 'Erro ao processar lista de compras. Tente novamente.');
+  }
 }
 
-// Função para verificar e adicionar nova linha
+function clearSearch() {
+  console.log('Iniciando clearSearch');
+  selectedProduct.value = null;
+  productStore.storeProducts = [];
+  productStore.shoppingListResults = [];
+  shoppingListItems.value = [{ product: null, quantity: null }];
+  isShoppingListEnabled.value = false;
+  shoppingListDialog.value = false;
+  searched.value = false;
+  showMap.value = false;
+  productStore.error = null;
+  showInfo('Pesquisa limpa!');
+  autocompleteKey.value++;
+  console.log('Estado após limpeza:', {
+    selectedProduct: selectedProduct.value,
+    storeProducts: productStore.storeProducts,
+    shoppingListResults: productStore.shoppingListResults,
+    shoppingListItems: shoppingListItems.value,
+    isShoppingListEnabled: isShoppingListEnabled.value,
+    shoppingListDialog: shoppingListDialog.value,
+    searched: searched.value,
+    showMap: showMap.value,
+    productStoreError: productStore.error
+  });
+  if (productStore.products.length === 0) {
+    productStore
+      .fetchClientProductSearch('')
+      .then(() => {
+        console.log('Produtos recarregados:', productStore.products);
+      })
+      .catch(err => {
+        console.error('Erro ao recarregar produtos:', err);
+        showError('Erro ao recarregar produtos. Tente novamente.');
+      });
+  } else {
+    console.log('Produtos já carregados:', productStore.products);
+  }
+}
+
+function toggleShoppingList() {
+  if (isShoppingListEnabled.value && !shoppingListDialog.value) {
+    shoppingListDialog.value = true;
+    if (productStore.products.length === 0) {
+      productStore.fetchClientProductSearch('');
+    }
+  } else if (!isShoppingListEnabled.value) {
+    shoppingListDialog.value = false;
+    shoppingListItems.value = [{ product: null, quantity: null }];
+    searched.value = false;
+    productStore.shoppingListResults = [];
+    showMap.value = false;
+  }
+}
+
 function checkAndAddNewRow(index: number) {
   const item = shoppingListItems.value[index];
   if (item.product && item.quantity && item.quantity > 0) {
@@ -464,48 +707,27 @@ function checkAndAddNewRow(index: number) {
   }
 }
 
-// Função para remover uma linha
 function removeRow(index: number) {
   if (shoppingListItems.value.length > 1) {
     shoppingListItems.value.splice(index, 1);
   }
 }
 
-// Função para buscar preços da lista de compras
-async function searchShoppingList() {
-  const validItems = shoppingListItems.value.filter(item => item.product && item.quantity && item.quantity > 0);
-  if (validItems.length === 0) return;
-
-  const items = validItems.map(item => ({
-    product_id: item.product.id,
-    quantity: item.quantity,
-  }));
-
-  try {
-    await productStore.fetchShoppingList(items);
-    searched.value = true;
-    shoppingListDialog.value = false;
-    snackbarText.value = 'Lista de compras processada com sucesso!';
-    snackbarColor.value = 'success';
-    snackbar.value = true;
-  } catch (err: any) {
-    snackbarText.value = err.data?.detail || 'Erro ao processar lista de compras. Tente novamente.';
-    snackbarColor.value = 'error';
-    snackbar.value = true;
+function onStoreMarkerClick(store: any) {
+  const storeInTable = sortedStores.value.find(s => 
+    s.store_id === store.id || 
+    s.store_username === store.name
+  );
+  if (storeInTable) {
+    // Você pode adicionar lógica para destacar a loja na tabela
   }
 }
 
-// Manipuladores de paginação
-const handlePageChange = (newPage: number) => {
-  page.value = newPage;
-};
+function focusOnStore(store: any) {
+  showMap.value = true;
+  // Você pode emitir um evento para o componente do mapa focar nesta loja
+}
 
-const handleItemsPerPageChange = (newItemsPerPage: number) => {
-  itemsPerPage.value = newItemsPerPage;
-  page.value = 1;
-};
-
-// Funções de formatação
 function formatPrice(price: number | string | null): string {
   if (price === null || price === undefined) return 'N/A';
   const numPrice = typeof price === 'string' ? parseFloat(price) : price;
@@ -529,12 +751,51 @@ function openImageDialog(item: StoreProduct) {
   imageDialog.value = true;
 }
 
-// Carregar produtos iniciais ao montar
+function showSuccess(message: string) {
+  snackbarText.value = message;
+  snackbarColor.value = 'success';
+  snackbar.value = true;
+}
+
+function showError(message: string) {
+  snackbarText.value = message;
+  snackbarColor.value = 'error';
+  snackbar.value = true;
+}
+
+function showInfo(message: string) {
+  snackbarText.value = message;
+  snackbarColor.value = 'info';
+  snackbar.value = true;
+}
+
+const handlePageChange = (newPage: number) => {
+  page.value = newPage;
+};
+
+const handleItemsPerPageChange = (newItemsPerPage: number) => {
+  itemsPerPage.value = newItemsPerPage;
+  page.value = 1;
+};
+
+watch(() => coords.value, (newCoords) => {
+  if (newCoords.latitude && newCoords.longitude) {
+    userLocation.value = [newCoords.latitude, newCoords.longitude];
+  }
+}, { immediate: true });
+
+watch(() => productStore.products, () => {
+  if (!selectedProduct.value && productStore.products.length > 0) {
+    selectedProduct.value = null;
+  }
+});
+
 onMounted(() => {
+  console.log('authStore.users:', authStore.users);
   if (!authStore.isClient) {
     router.push('/');
   } else if (productStore.products.length === 0) {
-    productStore.fetchClientProductSearch(''); // Garante que os produtos sejam carregados ao abrir
+    productStore.fetchClientProductSearch('');
   }
 });
 </script>
@@ -551,5 +812,15 @@ onMounted(() => {
 
 .v-btn {
   text-transform: none;
+}
+
+.store-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.store-link:hover {
+  text-decoration: underline;
+  color: primary;
 }
 </style>

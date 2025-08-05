@@ -1,10 +1,7 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: true },
-  modules: [
-    '@pinia/nuxt',
-    '@nuxt/eslint',
-  ],
+  modules: ['@pinia/nuxt', '@nuxt/eslint', '@nuxtjs/leaflet'],
   css: [
     '~/assets/css/main.css',
     'vuetify/styles',

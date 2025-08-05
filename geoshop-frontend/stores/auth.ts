@@ -142,22 +142,23 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async fetchAllUsers() {
-      if (!this.isAdmin) throw new Error('Acesso não autorizado');
+  if (!this.isAdmin) throw new Error('Acesso não autorizado');
 
-      try {
-        const response = await axios.get(`${useRuntimeConfig().public.apiBase}/users/`, {
-          headers: { Authorization: `Bearer ${this.token}` },
-        });
-        this.users = response.data.map(user => ({
-          ...user,
-          latitude: user.latitude || null,
-          longitude: user.longitude || null,
-        }));
-      } catch (error) {
-        console.error('Erro ao buscar usuários:', error);
-        throw error;
-      }
-    },
+  try {
+    const response = await axios.get(`${useRuntimeConfig().public.apiBase}/users/`, {
+      headers: { Authorization: `Bearer ${this.token}` },
+    });
+    this.users = response.data.map(user => ({
+      ...user,
+      latitude: user.latitude || null,
+      longitude: user.longitude || null,
+    }));
+    console.log('Usuários carregados:', this.users); // Adicione este log
+  } catch (error) {
+    console.error('Erro ao buscar usuários:', error);
+    throw error;
+  }
+},
 
     async registerClient(username: string, email: string, password: string) {
       try {

@@ -37,6 +37,8 @@ export const useProductStore = defineStore('product', () => {
     is_active: boolean;
     created_at: string;
     updated_at: string;
+    store_latitude?: number | null; 
+    store_longitude?: number | null;
   }
 
   // Interface para ShoppingListResult
@@ -49,6 +51,8 @@ export const useProductStore = defineStore('product', () => {
       quantity: number;
       item_total: number;
     }[];
+    store_latitude?: number | null; 
+    store_longitude?: number | null;
   }
 
   // Função para buscar todos os produtos
@@ -110,10 +114,9 @@ export const useProductStore = defineStore('product', () => {
       }
       const response = await $fetch(`${apiBase}/client/store-products/${productId}/`, {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer ${authStore.token}`,
-        },
+        headers: { Authorization: `Bearer ${authStore.token}` },
       });
+      console.log('Resposta da API /client/store-products/', response);
       storeProducts.value = response as StoreProduct[];
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao buscar produtos da loja';
@@ -134,11 +137,10 @@ export const useProductStore = defineStore('product', () => {
       }
       const response = await $fetch(`${apiBase}/client/shopping-list/`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${authStore.token}`,
-        },
+        headers: { Authorization: `Bearer ${authStore.token}` },
         body: { items },
       });
+      console.log('Resposta da API /client/shopping-list/', response);
       shoppingListResults.value = response as ShoppingListResult[];
     } catch (err: any) {
       error.value = err.data?.detail || 'Erro ao buscar lista de compras';

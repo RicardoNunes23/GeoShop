@@ -1,8 +1,9 @@
+# views.py
 from rest_framework import generics, permissions, status, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Product, StoreProduct
-from .serializers import ProductSerializer, StoreProductSerializer
+from .serializers import ProductSerializer, StoreProductSerializer, ShoppingListResultSerializer
 from users.models import CustomUser
 import logging
 
@@ -178,9 +179,12 @@ class ClientShoppingListView(APIView):
                     store_id = store_product.store_id
                     if store_id not in store_totals:
                         store_totals[store_id] = {
+                            'store_id': store_id,
                             'store_username': store_product.store.username,
                             'total_price': 0,
-                            'items': []
+                            'items': [],
+                            'store_latitude': store_product.store.latitude,
+                            'store_longitude': store_product.store.longitude
                         }
 
                     # Calcular preço do item
@@ -193,25 +197,21 @@ class ClientShoppingListView(APIView):
                     item_total = price * quantity
                     store_totals[store_id]['total_price'] += item_total
                     store_totals[store_id]['items'].append({
-                        'store_product': StoreProductSerializer(store_product).data,
+                        'store_product': store_product,
                         'quantity': quantity,
                         'item_total': item_total
                     })
 
-            # Converter para lista e ordenar por preço total
-            result = [
-                {
-                    'store_id': store_id,
-                    'store_username': data['store_username'],
-                    'total_price': data['total_price'],
-                    'items': data['items']
-                }
-                for store_id, data in store_totals.items()
-            ]
+            # Converter para lista
+            result = list(store_totals.values())
+            
+            # Ordenar por preço total
             result.sort(key=lambda x: x['total_price'])
 
+            # Serializar a resposta
+            serializer = ShoppingListResultSerializer(result, many=True)
             logger.info(f"Lista de compras processada com sucesso: {len(result)} lojas encontradas")
-            return Response(result, status=status.HTTP_200_OK)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Erro ao processar lista de compras: {str(e)}")
             return Response({"detail": f"Erro ao processar lista de compras: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

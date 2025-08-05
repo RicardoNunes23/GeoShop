@@ -1,3 +1,4 @@
+# serializers.py
 from rest_framework import serializers
 from .models import Product, StoreProduct
 from users.models import CustomUser
@@ -20,19 +21,19 @@ class StoreProductSerializer(serializers.ModelSerializer):
         write_only=True
     )
     store_username = serializers.CharField(source='store.username', read_only=True)
+    store_latitude = serializers.FloatField(source='store.latitude', read_only=True, allow_null=True)
+    store_longitude = serializers.FloatField(source='store.longitude', read_only=True, allow_null=True)
 
     class Meta:
         model = StoreProduct
-        fields = ['id', 'store', 'store_username', 'product', 'product_id', 'price', 'bulk_price', 'bulk_min_quantity', 'loyalty_price', 'is_active']
-        read_only_fields = ['store', 'product', 'store_username']
+        fields = ['id', 'store', 'store_username', 'store_latitude', 'store_longitude', 'product', 'product_id', 'price', 'bulk_price', 'bulk_min_quantity', 'loyalty_price', 'is_active']
+        read_only_fields = ['store', 'product', 'store_username', 'store_latitude', 'store_longitude']
 
     def validate_product_id(self, value):
         logger.debug(f"Validando product_id: {value.id}")
-        # Verificar se o product_id existe
         if not Product.objects.filter(id=value.id).exists():
             logger.error(f"Produto com ID {value.id} não existe")
             raise serializers.ValidationError("Produto com este ID não existe.")
-        # Verificar duplicatas
         request = self.context.get('request')
         if request and StoreProduct.objects.filter(product=value, store=request.user).exists():
             instance = self.instance
@@ -43,26 +44,18 @@ class StoreProductSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         logger.debug(f"Validando dados: {data}")
-        # Validar price (obrigatório e maior que zero)
         if data.get('price') is None or data.get('price') <= 0:
             logger.error("Preço inválido: deve ser maior que zero")
             raise serializers.ValidationError("O preço deve ser maior que zero.")
-
-        # Validar bulk_price (permitir None, mas não valores negativos)
         if data.get('bulk_price') is not None and data.get('bulk_price') < 0:
             logger.error("Preço por quantidade inválido: não pode ser negativo")
             raise serializers.ValidationError("O preço por quantidade não pode ser negativo.")
-
-        # Validar bulk_min_quantity (permitir None, mas não valores negativos)
         if data.get('bulk_min_quantity') is not None and data.get('bulk_min_quantity') < 0:
             logger.error("Quantidade mínima inválida: não pode ser negativa")
             raise serializers.ValidationError("A quantidade mínima não pode ser negativa.")
-
-        # Validar loyalty_price (permitir None, mas não valores negativos)
         if data.get('loyalty_price') is not None and data.get('loyalty_price') < 0:
             logger.error("Preço por fidelidade inválido: não pode ser negativo")
             raise serializers.ValidationError("O preço por fidelidade não pode ser negativo.")
-
         return data
 
     def create(self, validated_data):
@@ -78,3 +71,16 @@ class StoreProductSerializer(serializers.ModelSerializer):
         except Exception as e:
             logger.error(f"Erro ao criar StoreProduct: {str(e)}")
             raise serializers.ValidationError(f"Erro ao criar produto: {str(e)}")
+
+class ShoppingListItemSerializer(serializers.Serializer):
+    store_product = StoreProductSerializer(read_only=True)
+    quantity = serializers.IntegerField(min_value=1)
+    item_total = serializers.FloatField()
+
+class ShoppingListResultSerializer(serializers.Serializer):
+    store_id = serializers.IntegerField()
+    store_username = serializers.CharField()
+    total_price = serializers.FloatField()
+    items = ShoppingListItemSerializer(many=True)
+    store_latitude = serializers.FloatField(allow_null=True)
+    store_longitude = serializers.FloatField(allow_null=True)
